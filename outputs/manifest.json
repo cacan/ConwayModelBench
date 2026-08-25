@@ -1,0 +1,1204 @@
+{
+  "generated": "2026-08-25T10:57:52.915Z",
+  "endpoint": "http://192.168.31.13:1234/v1",
+  "entries": [
+    {
+      "model": "2GB-with-guide",
+      "displayName": "2GB-with-guide",
+      "slug": "2gb-with-guide",
+      "file": "2gb-with-guide.html",
+      "canonicalFile": "2gb-with-guide.html",
+      "timestamp": "2026-08-25T10:57:52.915Z",
+      "durationMs": null,
+      "contentLength": 11618,
+      "htmlLength": 11618,
+      "tokens": {
+        "prompt": null,
+        "completion": null,
+        "total": null
+      },
+      "tags": [
+        "historical"
+      ],
+      "migratedFrom": "ConwayGameofLife-2GB-with-guide.html"
+    },
+    {
+      "model": "2GB",
+      "displayName": "2GB",
+      "slug": "2gb",
+      "file": "2gb.html",
+      "canonicalFile": "2gb.html",
+      "timestamp": "2026-08-25T10:57:52.915Z",
+      "durationMs": null,
+      "contentLength": 5812,
+      "htmlLength": 5812,
+      "tokens": {
+        "prompt": null,
+        "completion": null,
+        "total": null
+      },
+      "tags": [
+        "historical"
+      ],
+      "migratedFrom": "ConwayGameofLife-2GB.html"
+    },
+    {
+      "model": "2GB_qwen3-glm-distill",
+      "displayName": "2GB_qwen3-glm-distill",
+      "slug": "2gb-qwen3-glm-distill",
+      "file": "2gb-qwen3-glm-distill.html",
+      "canonicalFile": "2gb-qwen3-glm-distill.html",
+      "timestamp": "2026-08-25T10:57:52.915Z",
+      "durationMs": null,
+      "contentLength": 33553,
+      "htmlLength": 33553,
+      "tokens": {
+        "prompt": null,
+        "completion": null,
+        "total": null
+      },
+      "tags": [
+        "historical"
+      ],
+      "migratedFrom": "ConwayGameofLife-2GB_qwen3-glm-distill.html"
+    },
+    {
+      "model": "devstral-24b-instruct-2512",
+      "displayName": "Devstral 24B Instruct 2512",
+      "slug": "devstral-24b-instruct-2512",
+      "file": "devstral-24b-instruct-2512.html",
+      "canonicalFile": "devstral-24b-instruct-2512.html",
+      "timestamp": "2026-08-25T10:57:52.915Z",
+      "durationMs": null,
+      "contentLength": 9525,
+      "htmlLength": 9525,
+      "tokens": {
+        "prompt": null,
+        "completion": null,
+        "total": null
+      },
+      "tags": [
+        "devstral"
+      ],
+      "migratedFrom": "ConwayGameofLife-DevStral-24B-instruct_2512.html"
+    },
+    {
+      "model": "devstral-small-2-24b-instruct-2512",
+      "displayName": "Devstral Small 2 24B Instruct 2512",
+      "slug": "devstral-small-2-24b-instruct-2512",
+      "file": "devstral-small-2-24b-instruct-2512.html",
+      "canonicalFile": "devstral-small-2-24b-instruct-2512.html",
+      "timestamp": "2026-08-25T10:57:52.915Z",
+      "durationMs": null,
+      "contentLength": 7071,
+      "htmlLength": 7071,
+      "tokens": {
+        "prompt": null,
+        "completion": null,
+        "total": null
+      },
+      "tags": [
+        "devstral"
+      ],
+      "migratedFrom": "ConwayGameofLife-Devstral-small-2-24b-instruct-2512.html"
+    },
+    {
+      "model": "devstral-small-2-24b-instruct-2512-wow",
+      "displayName": "Devstral Small 2 24B Instruct 2512 Wow",
+      "slug": "devstral-small-2-24b-instruct-2512-wow",
+      "file": "devstral-small-2-24b-instruct-2512-wow.html",
+      "canonicalFile": "devstral-small-2-24b-instruct-2512-wow.html",
+      "timestamp": "2026-08-25T10:57:52.915Z",
+      "durationMs": null,
+      "contentLength": 23033,
+      "htmlLength": 23033,
+      "tokens": {
+        "prompt": null,
+        "completion": null,
+        "total": null
+      },
+      "tags": [
+        "devstral"
+      ],
+      "migratedFrom": "ConwayGameofLife-Devstral-small-2-24b-instruct-2512_wow.html"
+    },
+    {
+      "model": "gemini-30-preview-3d",
+      "displayName": "Gemini 3.0 Preview 3D",
+      "slug": "gemini-30-preview-3d",
+      "file": "gemini-30-preview-3d.html",
+      "canonicalFile": "gemini-30-preview-3d.html",
+      "timestamp": "2026-08-25T10:57:52.915Z",
+      "durationMs": null,
+      "contentLength": 25143,
+      "htmlLength": 25143,
+      "tokens": {
+        "prompt": null,
+        "completion": null,
+        "total": null
+      },
+      "tags": [
+        "gemini",
+        "3d"
+      ],
+      "migratedFrom": "ConwayGameofLife-Gemini-30-preview_3d.html"
+    },
+    {
+      "model": "gemini-30-preview-improved",
+      "displayName": "Gemini 3.0 Preview Improved",
+      "slug": "gemini-30-preview-improved",
+      "file": "gemini-30-preview-improved.html",
+      "canonicalFile": "gemini-30-preview-improved.html",
+      "timestamp": "2026-08-25T10:57:52.915Z",
+      "durationMs": null,
+      "contentLength": 21443,
+      "htmlLength": 21443,
+      "tokens": {
+        "prompt": null,
+        "completion": null,
+        "total": null
+      },
+      "tags": [
+        "gemini"
+      ],
+      "migratedFrom": "ConwayGameofLife-Gemini-30-preview_improved.html"
+    },
+    {
+      "model": "gemini-30-preview-improved-v2",
+      "displayName": "Gemini 3.0 Preview Improved v2",
+      "slug": "gemini-30-preview-improved-v2",
+      "file": "gemini-30-preview-improved-v2.html",
+      "canonicalFile": "gemini-30-preview-improved-v2.html",
+      "timestamp": "2026-08-25T10:57:52.915Z",
+      "durationMs": null,
+      "contentLength": 26531,
+      "htmlLength": 26531,
+      "tokens": {
+        "prompt": null,
+        "completion": null,
+        "total": null
+      },
+      "tags": [
+        "gemini"
+      ],
+      "migratedFrom": "ConwayGameofLife-Gemini-30-preview_improved_v2.html"
+    },
+    {
+      "model": "geminie-30-preview",
+      "displayName": "Geminie 3.0 Preview",
+      "slug": "geminie-30-preview",
+      "file": "geminie-30-preview.html",
+      "canonicalFile": "geminie-30-preview.html",
+      "timestamp": "2026-08-25T10:57:52.915Z",
+      "durationMs": null,
+      "contentLength": 8490,
+      "htmlLength": 8490,
+      "tokens": {
+        "prompt": null,
+        "completion": null,
+        "total": null
+      },
+      "tags": [
+        "gemini"
+      ],
+      "migratedFrom": "ConwayGameofLife-Geminie-30-preview.html"
+    },
+    {
+      "model": "gemma-4-24b-a4",
+      "displayName": "Gemma 4 24B A4",
+      "slug": "gemma-4-24b-a4",
+      "file": "gemma-4-24b-a4.html",
+      "canonicalFile": "gemma-4-24b-a4.html",
+      "timestamp": "2026-08-25T10:57:52.915Z",
+      "durationMs": null,
+      "contentLength": 8079,
+      "htmlLength": 8079,
+      "tokens": {
+        "prompt": null,
+        "completion": null,
+        "total": null
+      },
+      "tags": [
+        "gemma"
+      ],
+      "migratedFrom": "ConwayGameofLife-Gemma-4-24b-a4.html"
+    },
+    {
+      "model": "gemma-4-24b-a4-ui",
+      "displayName": "Gemma 4 24B A4 UI",
+      "slug": "gemma-4-24b-a4-ui",
+      "file": "gemma-4-24b-a4-ui.html",
+      "canonicalFile": "gemma-4-24b-a4-ui.html",
+      "timestamp": "2026-08-25T10:57:52.915Z",
+      "durationMs": null,
+      "contentLength": 12248,
+      "htmlLength": 12248,
+      "tokens": {
+        "prompt": null,
+        "completion": null,
+        "total": null
+      },
+      "tags": [
+        "gemma",
+        "ui"
+      ],
+      "migratedFrom": "ConwayGameofLife-Gemma-4-24b-a4_ui.html"
+    },
+    {
+      "model": "glm-47-flash-improved-v2",
+      "displayName": "GLM 4.7 Flash Improved v2",
+      "slug": "glm-47-flash-improved-v2",
+      "file": "glm-47-flash-improved-v2.html",
+      "canonicalFile": "glm-47-flash-improved-v2.html",
+      "timestamp": "2026-08-25T10:57:52.915Z",
+      "durationMs": null,
+      "contentLength": 24216,
+      "htmlLength": 24216,
+      "tokens": {
+        "prompt": null,
+        "completion": null,
+        "total": null
+      },
+      "tags": [
+        "glm"
+      ],
+      "migratedFrom": "ConwayGameofLife-GLM-47-Flash-improved-v2.html"
+    },
+    {
+      "model": "glm-47-flash",
+      "displayName": "GLM 4.7 Flash",
+      "slug": "glm-47-flash",
+      "file": "glm-47-flash.html",
+      "canonicalFile": "glm-47-flash.html",
+      "timestamp": "2026-08-25T10:57:52.915Z",
+      "durationMs": null,
+      "contentLength": 23797,
+      "htmlLength": 23797,
+      "tokens": {
+        "prompt": null,
+        "completion": null,
+        "total": null
+      },
+      "tags": [
+        "glm"
+      ],
+      "migratedFrom": "ConwayGameofLife-GLM-47-Flash.html"
+    },
+    {
+      "model": "glm-47-flash-3d",
+      "displayName": "GLM 4.7 Flash 3D",
+      "slug": "glm-47-flash-3d",
+      "file": "glm-47-flash-3d.html",
+      "canonicalFile": "glm-47-flash-3d.html",
+      "timestamp": "2026-08-25T10:57:52.915Z",
+      "durationMs": null,
+      "contentLength": 20031,
+      "htmlLength": 20031,
+      "tokens": {
+        "prompt": null,
+        "completion": null,
+        "total": null
+      },
+      "tags": [
+        "glm",
+        "3d"
+      ],
+      "migratedFrom": "ConwayGameofLife-GLM-47-Flash_3D.html"
+    },
+    {
+      "model": "GLM",
+      "displayName": "GLM",
+      "slug": "glm",
+      "file": "glm.html",
+      "canonicalFile": "glm.html",
+      "timestamp": "2026-08-25T10:57:52.915Z",
+      "durationMs": null,
+      "contentLength": 17844,
+      "htmlLength": 17844,
+      "tokens": {
+        "prompt": null,
+        "completion": null,
+        "total": null
+      },
+      "tags": [
+        "historical"
+      ],
+      "migratedFrom": "ConwayGameofLife-GLM.html"
+    },
+    {
+      "model": "kat-coder-25-dev",
+      "displayName": "Kat Coder 2.5 Dev",
+      "slug": "kat-coder-25-dev",
+      "file": "kat-coder-25-dev.html",
+      "canonicalFile": "kat-coder-25-dev.html",
+      "timestamp": "2026-08-25T10:57:52.915Z",
+      "durationMs": null,
+      "contentLength": 18881,
+      "htmlLength": 18881,
+      "tokens": {
+        "prompt": null,
+        "completion": null,
+        "total": null
+      },
+      "tags": [
+        "kat"
+      ],
+      "migratedFrom": "ConwayGameofLife-kat-coder-25-dev.html"
+    },
+    {
+      "model": "lfm-2-5-1-2",
+      "displayName": "LFM 2.5 1.2",
+      "slug": "lfm-2-5-1-2",
+      "file": "lfm-2-5-1-2.html",
+      "canonicalFile": "lfm-2-5-1-2.html",
+      "timestamp": "2026-08-25T10:57:52.915Z",
+      "durationMs": null,
+      "contentLength": 6871,
+      "htmlLength": 6871,
+      "tokens": {
+        "prompt": null,
+        "completion": null,
+        "total": null
+      },
+      "tags": [
+        "lfm"
+      ],
+      "migratedFrom": "ConwayGameofLife-LFM-2-5_1-2.html"
+    },
+    {
+      "model": "nemotron-3-nano",
+      "displayName": "Nemotron 3 Nano",
+      "slug": "nemotron-3-nano",
+      "file": "nemotron-3-nano.html",
+      "canonicalFile": "nemotron-3-nano.html",
+      "timestamp": "2026-08-25T10:57:52.915Z",
+      "durationMs": null,
+      "contentLength": 10793,
+      "htmlLength": 10793,
+      "tokens": {
+        "prompt": null,
+        "completion": null,
+        "total": null
+      },
+      "tags": [
+        "nvidia",
+        "small",
+        "historical"
+      ],
+      "migratedFrom": "ConwayGameofLife-nemotron-3-nano.html"
+    },
+    {
+      "model": "orinth-1-0-95",
+      "displayName": "Orinth 1.0 95",
+      "slug": "orinth-1-0-95",
+      "file": "orinth-1-0-95.html",
+      "canonicalFile": "orinth-1-0-95.html",
+      "timestamp": "2026-08-25T10:57:52.915Z",
+      "durationMs": null,
+      "contentLength": 11448,
+      "htmlLength": 11448,
+      "tokens": {
+        "prompt": null,
+        "completion": null,
+        "total": null
+      },
+      "tags": [
+        "orinth"
+      ],
+      "migratedFrom": "ConwayGameofLife-Orinth-1_0-95.html"
+    },
+    {
+      "model": "qwen3-4b-thinking-glm46-distill",
+      "displayName": "Qwen3 4B Thinking GLM4.6 Distill",
+      "slug": "qwen3-4b-thinking-glm46-distill",
+      "file": "qwen3-4b-thinking-glm46-distill.html",
+      "canonicalFile": "qwen3-4b-thinking-glm46-distill.html",
+      "timestamp": "2026-08-25T10:57:52.915Z",
+      "durationMs": null,
+      "contentLength": 35099,
+      "htmlLength": 35099,
+      "tokens": {
+        "prompt": null,
+        "completion": null,
+        "total": null
+      },
+      "tags": [
+        "qwen",
+        "small",
+        "distill"
+      ],
+      "migratedFrom": "ConwayGameofLife-qwen3-4b-thinking-GLM46-distill.html"
+    },
+    {
+      "model": "qwen3-4b-thinking-glm46-distill-minimaxm2",
+      "displayName": "Qwen3 4B Thinking GLM4.6 Distill (MinimaxM2)",
+      "slug": "qwen3-4b-thinking-glm46-distill-minimaxm2",
+      "file": "qwen3-4b-thinking-glm46-distill-minimaxm2.html",
+      "canonicalFile": "qwen3-4b-thinking-glm46-distill-minimaxm2.html",
+      "timestamp": "2026-08-25T10:57:52.915Z",
+      "durationMs": null,
+      "contentLength": 7610,
+      "htmlLength": 7610,
+      "tokens": {
+        "prompt": null,
+        "completion": null,
+        "total": null
+      },
+      "tags": [
+        "qwen",
+        "small",
+        "distill"
+      ],
+      "migratedFrom": "ConwayGameofLife-qwen3-4b-thinking-GLM46-distill_MinimaxM2.html"
+    },
+    {
+      "model": "qwen3-4b-thinking-glm46-distill-n100",
+      "displayName": "Qwen3 4B Thinking GLM4.6 Distill N100",
+      "slug": "qwen3-4b-thinking-glm46-distill-n100",
+      "file": "qwen3-4b-thinking-glm46-distill-n100.html",
+      "canonicalFile": "qwen3-4b-thinking-glm46-distill-n100.html",
+      "timestamp": "2026-08-25T10:57:52.915Z",
+      "durationMs": null,
+      "contentLength": 7610,
+      "htmlLength": 7610,
+      "tokens": {
+        "prompt": null,
+        "completion": null,
+        "total": null
+      },
+      "tags": [
+        "qwen",
+        "small",
+        "distill"
+      ],
+      "migratedFrom": "ConwayGameofLife-qwen3-4b-thinking-GLM46-distill_N100.html"
+    },
+    {
+      "model": "qwen3-coder-30b-moe-6-1024ingestion",
+      "displayName": "Qwen3 Coder 30B MoE-6 1024 Ingestion",
+      "slug": "qwen3-coder-30b-moe-6-1024ingestion",
+      "file": "qwen3-coder-30b-moe-6-1024ingestion.html",
+      "canonicalFile": "qwen3-coder-30b-moe-6-1024ingestion.html",
+      "timestamp": "2026-08-25T10:57:52.915Z",
+      "durationMs": null,
+      "contentLength": 21956,
+      "htmlLength": 21956,
+      "tokens": {
+        "prompt": null,
+        "completion": null,
+        "total": null
+      },
+      "tags": [
+        "qwen",
+        "moe"
+      ],
+      "migratedFrom": "ConwayGameofLife-qwen3-coder-30b_MoE-6_1024ingestion.html"
+    },
+    {
+      "model": "Qwen3-distill-claude-opus-4.6-v1",
+      "displayName": "Qwen3-distill-claude-opus-4.6-v1",
+      "slug": "qwen3-distill-claude-opus-4.6-v1",
+      "file": "qwen3-distill-claude-opus-4.6-v1.html",
+      "canonicalFile": "qwen3-distill-claude-opus-4.6-v1.html",
+      "timestamp": "2026-08-25T10:57:52.915Z",
+      "durationMs": null,
+      "contentLength": 11665,
+      "htmlLength": 11665,
+      "tokens": {
+        "prompt": null,
+        "completion": null,
+        "total": null
+      },
+      "tags": [
+        "historical"
+      ],
+      "migratedFrom": "ConwayGameofLife-Qwen3-distill-claude-opus-4.6-v1.html"
+    },
+    {
+      "model": "Qwen3-distill-claude-opus-4.6-v2",
+      "displayName": "Qwen3-distill-claude-opus-4.6-v2",
+      "slug": "qwen3-distill-claude-opus-4.6-v2",
+      "file": "qwen3-distill-claude-opus-4.6-v2.html",
+      "canonicalFile": "qwen3-distill-claude-opus-4.6-v2.html",
+      "timestamp": "2026-08-25T10:57:52.915Z",
+      "durationMs": null,
+      "contentLength": 17821,
+      "htmlLength": 17821,
+      "tokens": {
+        "prompt": null,
+        "completion": null,
+        "total": null
+      },
+      "tags": [
+        "historical"
+      ],
+      "migratedFrom": "ConwayGameofLife-Qwen3-distill-claude-opus-4.6-v2.html"
+    },
+    {
+      "model": "qwen3-next",
+      "displayName": "Qwen3 Next",
+      "slug": "qwen3-next",
+      "file": "qwen3-next.html",
+      "canonicalFile": "qwen3-next.html",
+      "timestamp": "2026-08-25T10:57:52.915Z",
+      "durationMs": null,
+      "contentLength": 11916,
+      "htmlLength": 11916,
+      "tokens": {
+        "prompt": null,
+        "completion": null,
+        "total": null
+      },
+      "tags": [
+        "qwen"
+      ],
+      "migratedFrom": "ConwayGameofLife-qwen3-NEXT.html"
+    },
+    {
+      "model": "qwen3-next-v2",
+      "displayName": "Qwen3 Next v2",
+      "slug": "qwen3-next-v2",
+      "file": "qwen3-next-v2.html",
+      "canonicalFile": "qwen3-next-v2.html",
+      "timestamp": "2026-08-25T10:57:52.915Z",
+      "durationMs": null,
+      "contentLength": 46040,
+      "htmlLength": 46040,
+      "tokens": {
+        "prompt": null,
+        "completion": null,
+        "total": null
+      },
+      "tags": [
+        "qwen"
+      ],
+      "migratedFrom": "ConwayGameofLife-qwen3-NEXT_v2.html"
+    },
+    {
+      "model": "Qwen3.5-0.8b-coder-calude-full",
+      "displayName": "Qwen3.5-0.8b-coder-calude-full",
+      "slug": "qwen3.5-0.8b-coder-calude-full",
+      "file": "qwen3.5-0.8b-coder-calude-full.html",
+      "canonicalFile": "qwen3.5-0.8b-coder-calude-full.html",
+      "timestamp": "2026-08-25T10:57:52.915Z",
+      "durationMs": null,
+      "contentLength": 15701,
+      "htmlLength": 15701,
+      "tokens": {
+        "prompt": null,
+        "completion": null,
+        "total": null
+      },
+      "tags": [
+        "historical"
+      ],
+      "migratedFrom": "ConwayGameofLife-Qwen3.5-0.8b-coder-calude-full.html"
+    },
+    {
+      "model": "Qwen3.5-27b-distill-opus4.6-v2",
+      "displayName": "Qwen3.5-27b-distill-opus4.6-v2",
+      "slug": "qwen3.5-27b-distill-opus4.6-v2",
+      "file": "qwen3.5-27b-distill-opus4.6-v2.html",
+      "canonicalFile": "qwen3.5-27b-distill-opus4.6-v2.html",
+      "timestamp": "2026-08-25T10:57:52.915Z",
+      "durationMs": null,
+      "contentLength": 7136,
+      "htmlLength": 7136,
+      "tokens": {
+        "prompt": null,
+        "completion": null,
+        "total": null
+      },
+      "tags": [
+        "historical"
+      ],
+      "migratedFrom": "ConwayGameofLife-Qwen3.5-27b-distill-opus4.6-v2.html"
+    },
+    {
+      "model": "Qwen3.5-27b-distill-opus4.6-v2_3d_v1",
+      "displayName": "Qwen3.5-27b-distill-opus4.6-v2_3d_v1",
+      "slug": "qwen3.5-27b-distill-opus4.6-v2-3d-v1",
+      "file": "qwen3.5-27b-distill-opus4.6-v2-3d-v1.html",
+      "canonicalFile": "qwen3.5-27b-distill-opus4.6-v2-3d-v1.html",
+      "timestamp": "2026-08-25T10:57:52.915Z",
+      "durationMs": null,
+      "contentLength": 15878,
+      "htmlLength": 15878,
+      "tokens": {
+        "prompt": null,
+        "completion": null,
+        "total": null
+      },
+      "tags": [
+        "historical"
+      ],
+      "migratedFrom": "ConwayGameofLife-Qwen3.5-27b-distill-opus4.6-v2_3d_v1.html"
+    },
+    {
+      "model": "Qwen3.5-27b-distill-opus4.6-v2_3d_v2",
+      "displayName": "Qwen3.5-27b-distill-opus4.6-v2_3d_v2",
+      "slug": "qwen3.5-27b-distill-opus4.6-v2-3d-v2",
+      "file": "qwen3.5-27b-distill-opus4.6-v2-3d-v2.html",
+      "canonicalFile": "qwen3.5-27b-distill-opus4.6-v2-3d-v2.html",
+      "timestamp": "2026-08-25T10:57:52.915Z",
+      "durationMs": null,
+      "contentLength": 23736,
+      "htmlLength": 23736,
+      "tokens": {
+        "prompt": null,
+        "completion": null,
+        "total": null
+      },
+      "tags": [
+        "historical"
+      ],
+      "migratedFrom": "ConwayGameofLife-Qwen3.5-27b-distill-opus4.6-v2_3d_v2.html"
+    },
+    {
+      "model": "Qwen3.5-27b-distill-opus4.6-v2_ui_improved_v1",
+      "displayName": "Qwen3.5-27b-distill-opus4.6-v2_ui_improved_v1",
+      "slug": "qwen3.5-27b-distill-opus4.6-v2-ui-improved-v1",
+      "file": "qwen3.5-27b-distill-opus4.6-v2-ui-improved-v1.html",
+      "canonicalFile": "qwen3.5-27b-distill-opus4.6-v2-ui-improved-v1.html",
+      "timestamp": "2026-08-25T10:57:52.915Z",
+      "durationMs": null,
+      "contentLength": 12748,
+      "htmlLength": 12748,
+      "tokens": {
+        "prompt": null,
+        "completion": null,
+        "total": null
+      },
+      "tags": [
+        "historical"
+      ],
+      "migratedFrom": "ConwayGameofLife-Qwen3.5-27b-distill-opus4.6-v2_ui_improved_v1.html"
+    },
+    {
+      "model": "Qwen3.5-35b-a3b-v1",
+      "displayName": "Qwen3.5-35b-a3b-v1",
+      "slug": "qwen3.5-35b-a3b-v1",
+      "file": "qwen3.5-35b-a3b-v1.html",
+      "canonicalFile": "qwen3.5-35b-a3b-v1.html",
+      "timestamp": "2026-08-25T10:57:52.915Z",
+      "durationMs": null,
+      "contentLength": 11347,
+      "htmlLength": 11347,
+      "tokens": {
+        "prompt": null,
+        "completion": null,
+        "total": null
+      },
+      "tags": [
+        "historical"
+      ],
+      "migratedFrom": "ConwayGameofLife-Qwen3.5-35b-a3b-v1.html"
+    },
+    {
+      "model": "Qwen3.5-35b-a3b-v2",
+      "displayName": "Qwen3.5-35b-a3b-v2",
+      "slug": "qwen3.5-35b-a3b-v2",
+      "file": "qwen3.5-35b-a3b-v2.html",
+      "canonicalFile": "qwen3.5-35b-a3b-v2.html",
+      "timestamp": "2026-08-25T10:57:52.915Z",
+      "durationMs": null,
+      "contentLength": 12052,
+      "htmlLength": 12052,
+      "tokens": {
+        "prompt": null,
+        "completion": null,
+        "total": null
+      },
+      "tags": [
+        "historical"
+      ],
+      "migratedFrom": "ConwayGameofLife-Qwen3.5-35b-a3b-v2.html"
+    },
+    {
+      "model": "Qwen3.5-35b-a3b-v3-3D-v2",
+      "displayName": "Qwen3.5-35b-a3b-v3-3D-v2",
+      "slug": "qwen3.5-35b-a3b-v3-3d-v2",
+      "file": "qwen3.5-35b-a3b-v3-3d-v2.html",
+      "canonicalFile": "qwen3.5-35b-a3b-v3-3d-v2.html",
+      "timestamp": "2026-08-25T10:57:52.915Z",
+      "durationMs": null,
+      "contentLength": 20031,
+      "htmlLength": 20031,
+      "tokens": {
+        "prompt": null,
+        "completion": null,
+        "total": null
+      },
+      "tags": [
+        "historical"
+      ],
+      "migratedFrom": "ConwayGameofLife-Qwen3.5-35b-a3b-v3-3D-v2.html"
+    },
+    {
+      "model": "Qwen3.5-35b-a3b-v3-3D",
+      "displayName": "Qwen3.5-35b-a3b-v3-3D",
+      "slug": "qwen3.5-35b-a3b-v3-3d",
+      "file": "qwen3.5-35b-a3b-v3-3d.html",
+      "canonicalFile": "qwen3.5-35b-a3b-v3-3d.html",
+      "timestamp": "2026-08-25T10:57:52.915Z",
+      "durationMs": null,
+      "contentLength": 12950,
+      "htmlLength": 12950,
+      "tokens": {
+        "prompt": null,
+        "completion": null,
+        "total": null
+      },
+      "tags": [
+        "historical"
+      ],
+      "migratedFrom": "ConwayGameofLife-Qwen3.5-35b-a3b-v3-3D.html"
+    },
+    {
+      "model": "Qwen3.5-4b-Opus4-6_distill_v1",
+      "displayName": "Qwen3.5-4b-Opus4-6_distill_v1",
+      "slug": "qwen3.5-4b-opus4-6-distill-v1",
+      "file": "qwen3.5-4b-opus4-6-distill-v1.html",
+      "canonicalFile": "qwen3.5-4b-opus4-6-distill-v1.html",
+      "timestamp": "2026-08-25T10:57:52.915Z",
+      "durationMs": null,
+      "contentLength": 9802,
+      "htmlLength": 9802,
+      "tokens": {
+        "prompt": null,
+        "completion": null,
+        "total": null
+      },
+      "tags": [
+        "historical"
+      ],
+      "migratedFrom": "ConwayGameofLife-Qwen3.5-4b-Opus4-6_distill_v1.html"
+    },
+    {
+      "model": "Qwen3.5-4b-Opus4-6_distill_v2",
+      "displayName": "Qwen3.5-4b-Opus4-6_distill_v2",
+      "slug": "qwen3.5-4b-opus4-6-distill-v2",
+      "file": "qwen3.5-4b-opus4-6-distill-v2.html",
+      "canonicalFile": "qwen3.5-4b-opus4-6-distill-v2.html",
+      "timestamp": "2026-08-25T10:57:52.915Z",
+      "durationMs": null,
+      "contentLength": 27823,
+      "htmlLength": 27823,
+      "tokens": {
+        "prompt": null,
+        "completion": null,
+        "total": null
+      },
+      "tags": [
+        "historical"
+      ],
+      "migratedFrom": "ConwayGameofLife-Qwen3.5-4b-Opus4-6_distill_v2.html"
+    },
+    {
+      "model": "Qwen3.5-4b-v1",
+      "displayName": "Qwen3.5-4b-v1",
+      "slug": "qwen3.5-4b-v1",
+      "file": "qwen3.5-4b-v1.html",
+      "canonicalFile": "qwen3.5-4b-v1.html",
+      "timestamp": "2026-08-25T10:57:52.915Z",
+      "durationMs": null,
+      "contentLength": 9049,
+      "htmlLength": 9049,
+      "tokens": {
+        "prompt": null,
+        "completion": null,
+        "total": null
+      },
+      "tags": [
+        "historical"
+      ],
+      "migratedFrom": "ConwayGameofLife-Qwen3.5-4b-v1.html"
+    },
+    {
+      "model": "Qwen3.5-4b-v2",
+      "displayName": "Qwen3.5-4b-v2",
+      "slug": "qwen3.5-4b-v2",
+      "file": "qwen3.5-4b-v2.html",
+      "canonicalFile": "qwen3.5-4b-v2.html",
+      "timestamp": "2026-08-25T10:57:52.915Z",
+      "durationMs": null,
+      "contentLength": 8984,
+      "htmlLength": 8984,
+      "tokens": {
+        "prompt": null,
+        "completion": null,
+        "total": null
+      },
+      "tags": [
+        "historical"
+      ],
+      "migratedFrom": "ConwayGameofLife-Qwen3.5-4b-v2.html"
+    },
+    {
+      "model": "Qwen3.5-4b-v3-3D-fixed-by-GLM37-flash",
+      "displayName": "Qwen3.5-4b-v3-3D-fixed-by-GLM37-flash",
+      "slug": "qwen3.5-4b-v3-3d-fixed-by-glm37-flash",
+      "file": "qwen3.5-4b-v3-3d-fixed-by-glm37-flash.html",
+      "canonicalFile": "qwen3.5-4b-v3-3d-fixed-by-glm37-flash.html",
+      "timestamp": "2026-08-25T10:57:52.915Z",
+      "durationMs": null,
+      "contentLength": 15733,
+      "htmlLength": 15733,
+      "tokens": {
+        "prompt": null,
+        "completion": null,
+        "total": null
+      },
+      "tags": [
+        "historical"
+      ],
+      "migratedFrom": "ConwayGameofLife-Qwen3.5-4b-v3-3D-fixed-by-GLM37-flash.html"
+    },
+    {
+      "model": "Qwen3.5-4b-v3-fixed-by-GLM37-flash",
+      "displayName": "Qwen3.5-4b-v3-fixed-by-GLM37-flash",
+      "slug": "qwen3.5-4b-v3-fixed-by-glm37-flash",
+      "file": "qwen3.5-4b-v3-fixed-by-glm37-flash.html",
+      "canonicalFile": "qwen3.5-4b-v3-fixed-by-glm37-flash.html",
+      "timestamp": "2026-08-25T10:57:52.915Z",
+      "durationMs": null,
+      "contentLength": 10106,
+      "htmlLength": 10106,
+      "tokens": {
+        "prompt": null,
+        "completion": null,
+        "total": null
+      },
+      "tags": [
+        "historical"
+      ],
+      "migratedFrom": "ConwayGameofLife-Qwen3.5-4b-v3-fixed-by-GLM37-flash.html"
+    },
+    {
+      "model": "Qwen3.5-9b-distill-opus4.6-v2",
+      "displayName": "Qwen3.5-9b-distill-opus4.6-v2",
+      "slug": "qwen3.5-9b-distill-opus4.6-v2",
+      "file": "qwen3.5-9b-distill-opus4.6-v2.html",
+      "canonicalFile": "qwen3.5-9b-distill-opus4.6-v2.html",
+      "timestamp": "2026-08-25T10:57:52.915Z",
+      "durationMs": null,
+      "contentLength": 9536,
+      "htmlLength": 9536,
+      "tokens": {
+        "prompt": null,
+        "completion": null,
+        "total": null
+      },
+      "tags": [
+        "historical"
+      ],
+      "migratedFrom": "ConwayGameofLife-Qwen3.5-9b-distill-opus4.6-v2.html"
+    },
+    {
+      "model": "Qwen3.5-9b-distill-opus4.6-v2_3d",
+      "displayName": "Qwen3.5-9b-distill-opus4.6-v2_3d",
+      "slug": "qwen3.5-9b-distill-opus4.6-v2-3d",
+      "file": "qwen3.5-9b-distill-opus4.6-v2-3d.html",
+      "canonicalFile": "qwen3.5-9b-distill-opus4.6-v2-3d.html",
+      "timestamp": "2026-08-25T10:57:52.915Z",
+      "durationMs": null,
+      "contentLength": 18271,
+      "htmlLength": 18271,
+      "tokens": {
+        "prompt": null,
+        "completion": null,
+        "total": null
+      },
+      "tags": [
+        "historical"
+      ],
+      "migratedFrom": "ConwayGameofLife-Qwen3.5-9b-distill-opus4.6-v2_3d.html"
+    },
+    {
+      "model": "Qwen3.5-9b-distill-opus4.6-v2_ui_improved",
+      "displayName": "Qwen3.5-9b-distill-opus4.6-v2_ui_improved",
+      "slug": "qwen3.5-9b-distill-opus4.6-v2-ui-improved",
+      "file": "qwen3.5-9b-distill-opus4.6-v2-ui-improved.html",
+      "canonicalFile": "qwen3.5-9b-distill-opus4.6-v2-ui-improved.html",
+      "timestamp": "2026-08-25T10:57:52.915Z",
+      "durationMs": null,
+      "contentLength": 10710,
+      "htmlLength": 10710,
+      "tokens": {
+        "prompt": null,
+        "completion": null,
+        "total": null
+      },
+      "tags": [
+        "historical"
+      ],
+      "migratedFrom": "ConwayGameofLife-Qwen3.5-9b-distill-opus4.6-v2_ui_improved.html"
+    },
+    {
+      "model": "Qwen3.6-27b-3D",
+      "displayName": "Qwen3.6-27b-3D",
+      "slug": "qwen3.6-27b-3d",
+      "file": "qwen3.6-27b-3d.html",
+      "canonicalFile": "qwen3.6-27b-3d.html",
+      "timestamp": "2026-08-25T10:57:52.915Z",
+      "durationMs": null,
+      "contentLength": 13098,
+      "htmlLength": 13098,
+      "tokens": {
+        "prompt": null,
+        "completion": null,
+        "total": null
+      },
+      "tags": [
+        "historical"
+      ],
+      "migratedFrom": "ConwayGameofLife-Qwen3.6-27b-3D.html"
+    },
+    {
+      "model": "Qwen3.6-27b",
+      "displayName": "Qwen3.6-27b",
+      "slug": "qwen3.6-27b",
+      "file": "qwen3.6-27b.html",
+      "canonicalFile": "qwen3.6-27b.html",
+      "timestamp": "2026-08-25T10:57:52.915Z",
+      "durationMs": null,
+      "contentLength": 13525,
+      "htmlLength": 13525,
+      "tokens": {
+        "prompt": null,
+        "completion": null,
+        "total": null
+      },
+      "tags": [
+        "historical"
+      ],
+      "migratedFrom": "ConwayGameofLife-Qwen3.6-27b.html"
+    },
+    {
+      "model": "Qwen3.6-35b-a3b_Opus4.6_distill",
+      "displayName": "Qwen3.6-35b-a3b_Opus4.6_distill",
+      "slug": "qwen3.6-35b-a3b-opus4.6-distill",
+      "file": "qwen3.6-35b-a3b-opus4.6-distill.html",
+      "canonicalFile": "qwen3.6-35b-a3b-opus4.6-distill.html",
+      "timestamp": "2026-08-25T10:57:52.915Z",
+      "durationMs": null,
+      "contentLength": 11849,
+      "htmlLength": 11849,
+      "tokens": {
+        "prompt": null,
+        "completion": null,
+        "total": null
+      },
+      "tags": [
+        "historical"
+      ],
+      "migratedFrom": "ConwayGameofLife-Qwen3.6-35b-a3b_Opus4.6_distill.html"
+    },
+    {
+      "model": "Qwen3.6-35b-a3b_Opus4.6_distill_3d",
+      "displayName": "Qwen3.6-35b-a3b_Opus4.6_distill_3d",
+      "slug": "qwen3.6-35b-a3b-opus4.6-distill-3d",
+      "file": "qwen3.6-35b-a3b-opus4.6-distill-3d.html",
+      "canonicalFile": "qwen3.6-35b-a3b-opus4.6-distill-3d.html",
+      "timestamp": "2026-08-25T10:57:52.915Z",
+      "durationMs": null,
+      "contentLength": 22782,
+      "htmlLength": 22782,
+      "tokens": {
+        "prompt": null,
+        "completion": null,
+        "total": null
+      },
+      "tags": [
+        "historical"
+      ],
+      "migratedFrom": "ConwayGameofLife-Qwen3.6-35b-a3b_Opus4.6_distill_3d.html"
+    },
+    {
+      "model": "Qwen3.6-35b-a3b_Opus4.6_distill_v2",
+      "displayName": "Qwen3.6-35b-a3b_Opus4.6_distill_v2",
+      "slug": "qwen3.6-35b-a3b-opus4.6-distill-v2",
+      "file": "qwen3.6-35b-a3b-opus4.6-distill-v2.html",
+      "canonicalFile": "qwen3.6-35b-a3b-opus4.6-distill-v2.html",
+      "timestamp": "2026-08-25T10:57:52.915Z",
+      "durationMs": null,
+      "contentLength": 12564,
+      "htmlLength": 12564,
+      "tokens": {
+        "prompt": null,
+        "completion": null,
+        "total": null
+      },
+      "tags": [
+        "historical"
+      ],
+      "migratedFrom": "ConwayGameofLife-Qwen3.6-35b-a3b_Opus4.6_distill_v2.html"
+    },
+    {
+      "model": "Qwen3.6-35b_a3b_mtp",
+      "displayName": "Qwen3.6-35b_a3b_mtp",
+      "slug": "qwen3.6-35b-a3b-mtp",
+      "file": "qwen3.6-35b-a3b-mtp.html",
+      "canonicalFile": "qwen3.6-35b-a3b-mtp.html",
+      "timestamp": "2026-08-25T10:57:52.915Z",
+      "durationMs": null,
+      "contentLength": 16989,
+      "htmlLength": 16989,
+      "tokens": {
+        "prompt": null,
+        "completion": null,
+        "total": null
+      },
+      "tags": [
+        "historical"
+      ],
+      "migratedFrom": "ConwayGameofLife-Qwen3.6-35b_a3b_mtp.html"
+    },
+    {
+      "model": "Qwen3.6-35b_a3b_mtp_3D",
+      "displayName": "Qwen3.6-35b_a3b_mtp_3D",
+      "slug": "qwen3.6-35b-a3b-mtp-3d",
+      "file": "qwen3.6-35b-a3b-mtp-3d.html",
+      "canonicalFile": "qwen3.6-35b-a3b-mtp-3d.html",
+      "timestamp": "2026-08-25T10:57:52.915Z",
+      "durationMs": null,
+      "contentLength": 23352,
+      "htmlLength": 23352,
+      "tokens": {
+        "prompt": null,
+        "completion": null,
+        "total": null
+      },
+      "tags": [
+        "historical"
+      ],
+      "migratedFrom": "ConwayGameofLife-Qwen3.6-35b_a3b_mtp_3D.html"
+    },
+    {
+      "model": "Qwen38-27b-Q8",
+      "displayName": "Qwen38-27b-Q8",
+      "slug": "qwen38-27b-q8",
+      "file": "qwen38-27b-q8.html",
+      "canonicalFile": "qwen38-27b-q8.html",
+      "timestamp": "2026-08-25T10:57:52.915Z",
+      "durationMs": null,
+      "contentLength": 26781,
+      "htmlLength": 26781,
+      "tokens": {
+        "prompt": null,
+        "completion": null,
+        "total": null
+      },
+      "tags": [
+        "historical"
+      ],
+      "migratedFrom": "ConwayGameofLife-Qwen38-27b-Q8.html"
+    },
+    {
+      "model": "ConwayGameofLife",
+      "displayName": "ConwayGameofLife",
+      "slug": "conwaygameoflife",
+      "file": "conwaygameoflife.html",
+      "canonicalFile": "conwaygameoflife.html",
+      "timestamp": "2026-08-25T10:57:52.915Z",
+      "durationMs": null,
+      "contentLength": 24201,
+      "htmlLength": 24201,
+      "tokens": {
+        "prompt": null,
+        "completion": null,
+        "total": null
+      },
+      "tags": [
+        "historical"
+      ],
+      "migratedFrom": "ConwayGameofLife.html"
+    },
+    {
+      "model": "taalas-asic-v1",
+      "displayName": "Taalas ASIC v1",
+      "slug": "taalas-asic-v1",
+      "file": "taalas-asic-v1.html",
+      "canonicalFile": "taalas-asic-v1.html",
+      "timestamp": "2026-08-25T10:57:52.915Z",
+      "durationMs": null,
+      "contentLength": 3987,
+      "htmlLength": 3987,
+      "tokens": {
+        "prompt": null,
+        "completion": null,
+        "total": null
+      },
+      "tags": [
+        "taalas",
+        "experimental"
+      ],
+      "migratedFrom": "ConwayGameofLife_Taalas_ASIC_v1.html"
+    },
+    {
+      "model": "taalas-asic-v2",
+      "displayName": "Taalas ASIC v2",
+      "slug": "taalas-asic-v2",
+      "file": "taalas-asic-v2.html",
+      "canonicalFile": "taalas-asic-v2.html",
+      "timestamp": "2026-08-25T10:57:52.915Z",
+      "durationMs": null,
+      "contentLength": 4897,
+      "htmlLength": 4897,
+      "tokens": {
+        "prompt": null,
+        "completion": null,
+        "total": null
+      },
+      "tags": [
+        "taalas",
+        "experimental"
+      ],
+      "migratedFrom": "ConwayGameofLife_Taalas_ASIC_v2.html"
+    },
+    {
+      "model": "oblaci-polja-nemotron-3-nano",
+      "displayName": "Oblaci Polja Nemotron 3 Nano",
+      "slug": "oblaci-polja-nemotron-3-nano",
+      "file": "oblaci-polja-nemotron-3-nano.html",
+      "canonicalFile": "oblaci-polja-nemotron-3-nano.html",
+      "timestamp": "2026-08-25T10:57:52.915Z",
+      "durationMs": null,
+      "contentLength": 1220,
+      "htmlLength": 1220,
+      "tokens": {
+        "prompt": null,
+        "completion": null,
+        "total": null
+      },
+      "tags": [
+        "nvidia",
+        "small",
+        "svg"
+      ],
+      "migratedFrom": "oblaci-polja-nemotron-3-nano.html"
+    },
+    {
+      "model": "oblaci-polja-nemotron-3-nano-3d",
+      "displayName": "Oblaci Polja Nemotron 3 Nano 3D",
+      "slug": "oblaci-polja-nemotron-3-nano-3d",
+      "file": "oblaci-polja-nemotron-3-nano-3d.html",
+      "canonicalFile": "oblaci-polja-nemotron-3-nano-3d.html",
+      "timestamp": "2026-08-25T10:57:52.915Z",
+      "durationMs": null,
+      "contentLength": 11860,
+      "htmlLength": 11860,
+      "tokens": {
+        "prompt": null,
+        "completion": null,
+        "total": null
+      },
+      "tags": [
+        "nvidia",
+        "small",
+        "svg"
+      ],
+      "migratedFrom": "oblaci-polja-nemotron-3-nano_3d.html"
+    }
+  ]
+}

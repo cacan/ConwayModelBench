@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Life | Premium Edition</title>
+    <!-- High-end Typography -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;500;700&display=swap" rel="stylesheet">
+    <!-- Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <style>
+        :root {
+            --accent: #00f2ff; /* Cyber Cyan */
+            --accent-glow: rgba(0, 242, 255, 0.5);
+            --bg-dark: #080a0f;
+            --glass: rgba(255, 255, 255, 0.05);
+            --glass-border: rgba(255, 255, 255, 0.1);
+            --text: #e0e6ed;
+        }
+
+        * {
+            box-sizing: border-box;
+            user-select: none;
+        }
+
+        body {
+            background-color: var(--bg-dark);
+            /* Animated background gradient */
+            background: radial-gradient(circle at 50% 50%, #161b22 0%, #080a0f 100%);
+            color: var(--text);
+            font-family: 'Inter', sans-serif;
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        /* The "Screen" container */
+        .app-container {
+            position: relative;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        /* Stats Overlay - Floating inside the top of the canvas area */
+        .stats-badge {
+            background: var(--glass);
+            backdrop-filter: blur(10px);
+            border: 1px solid var(--glass-border);
+            padding: 8px 20px;
+            border-radius: 50px;
+            font-size: 0.8rem;
+            font-weight: 500;
+            letter-spacing: 1px;
+            margin-bottom: 15px;
+            color: var(--accent);
+            text-transform: uppercase;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+        }
+
+        canvas {
+            background: #000;
+            border-radius: 12px;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.8), 
+                        0 0 0 1px var(--glass-border);
+            cursor: crosshair;
+            image-rendering: pixelated;
+        }
+
+        /* The Floating Dock (macOS style) */
+        .dock {
+            position: fixed;
+            bottom: 30px;
+            background: rgba(15, 20, 28, 0.7);
+            backdrop-filter: blur(20px);
+            border: 1px solid var(--glass-border);
+            padding: 10px 20px;
+            border-radius: 24px;
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.5);
+            transition: transform 0.3s ease;
+        }
+
+        .dock:hover {
+            transform: translateY(-5px);
+        }
+
+        .dock-group {
+            display: flex;
+            gap: 10px;
+            border-right: 1px solid var(--glass-border);
+            padding-right: 15px;
+        }
+
+        .dock-group:last-child {
+            border-right: none;
+            padding-right: 0;
+        }
+
+        /* Buttons */
+        .icon-btn {
+            width: 45px;
+            height: 45px;
+            border-radius: 12px;
+            border: none;
+            background: transparent;
+            color: var(--text);
+            font-size: 1.2rem;
+            cursor: pointer;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .icon-btn:hover {
+            background: var(--glass);
+            color: var(--accent);
+            transform: scale(1.1);
+        }
+
+        .icon-btn.active {
+            background: var(--accent);
+            color: var(--bg-dark);
+            box-shadow: 0 0 15px var(--accent-glow);
+        }
+
+        /* Slider Styling */
+        .slider-container {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            color: #888;
+        }
+
+        input[type=range] {
+            appearance: none;
+            background: var(--glass-border);
+            height: 4px;
+            border-radius: 2px;
+            width: 80px;
+        }
+
+        input[type=range]::-webkit-slider-thumb {
+            appearance: none;
+            width: 12px;
+            height: 12px;
+            background: var(--accent);
+            border-radius: 50%;
+            cursor: pointer;
+            box-shadow: 0 0 10px var(--accent-glow);
+        }
+
+        .instructions {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            font-size: 0.7rem;
+            color: #555;
+            text-align: right;
+        }
+
+    </style>
+</head>
+<body>
+
+    <div class="instructions">
+        SYSTEM ACTIVE<br>
+        DRAG TO INTERACT
+    </div>
+
+    <div class="app-container">
+        <div class="stats-badge" id="stats">Generation: 0</div>
+        <canvas id="gameCanvas"></canvas>
+    </div>
+
+    <!-- Floating Dock -->
+    <div class="dock">
+        <!-- Main Controls -->
+        <div class="dock-group">
+            <button id="startBtn" class="icon-btn" title="Start/Stop">
+                <i class="fas fa-play"></i>
+            </button>
+            <button id="randomBtn" class="icon-btn" title="Randomize">
+                <i class="fas fa-dice"></i>
+            </button>
+            <button id="clearBtn" class="icon-btn" title="Clear All">
+                <i class="fas fa-trash-alt"></i>
+            </button>
+        </div>
+
+        <!-- Settings -->
+        <div class="dock-group">
+            <div class="slider-container">
+                <i class="fas fa-tachometer-alt"></i>
+                <input type="range" id="speedRange" min="1" max="60" value="30">
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d'); // FIXED: getContext
+        const startBtn = document.getElementById('startBtn');
+        const randomBtn = document.getElementById('randomBtn');
+        const clearBtn = document.getElementById('clearBtn');
+        const speedRange = document.getElementById('speedRange');
+        const statsDisplay = document.getElementById('stats');
+
+        // Configuration - Slightly larger resolution for "Eye Candy" glow effect
+        const resolution = 8; 
+        canvas.width = 800;
+        canvas.height = 500;
+        const COLS = canvas.width / resolution;
+        const ROWS = canvas.height / resolution;
+
+        let grid = createGrid();
+        let isRunning = false;
+        let generation = 0;
+        let animationId = null;
+        let lastTime = 0;
+
+        function createGrid() {
+            return Array.from({ length: COLS }, () => Array(ROWS).fill(0));
+        }
+
+        function randomizeGrid() {
+            for (let col = 0; col < COLS; col++) {
+                for (let row = 0; row < ROWS; row++) {
+                    grid[col][row] = Math.random() > 0.85 ? 1 : 0;
+                }
+            }
+            generation = 0;
+            updateStats();
+            draw();
+        }
+
+        function updateStats() {
+            statsDisplay.textContent = `Generation: ${generation}`;
+        }
+
+        function nextGeneration() {
+            const nextGrid = createGrid();
+            for (let col = 0; col < COLS; col++) {
+                for (let row = 0; row < ROWS; row++) {
+                    const neighbors = countNeighbors(col, row);
+                    const currentState = grid[col][row];
+
+                    if (currentState === 1 && (neighbors < 2 || neighbors > 3)) {
+                        nextGrid[col][row] = 0;
+                    } else if (currentState === 0 && neighbors === 3) {
+                        nextGrid[col][row] = 1;
+                    } else {
+                        nextGrid[col][row] = currentState;
+                    }
+                }
+            }
+            grid = nextGrid;
+            generation++;
+            updateStats();
+        }
+
+        function countNeighbors(col, row) {
+            let sum = 0;
+            for (let i = -1; i < 2; i++) {
+                for (let j = -1; j < 2; j++) {
+                    if (i === 0 && j === 0) continue;
+                    const x = (col + i + COLS) % COLS;
+                    const y = (row + j + ROWS) % ROWS;
+                    sum += grid[x][y];
+                }
+            }
+            return sum;
+        }
+
+        function draw() {
+            // Clear with a slight fade effect for motion trails if desired, 
+            // but here we use clearRect for crispness.
+            ctx.fillStyle = '#000';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // Setup Glow Effect
+            ctx.shadowBlur = 12;
+            ctx.shadowColor = '#00f2ff';
+
+            for (let col = 0; col < COLS; col++) {
+                for (let row = 0; row < ROWS; row++) {
+                    if (grid[col][row]) {
+                        ctx.fillStyle = '#00f2ff';
+                        // Draw cell with a tiny gap to create a "grid" look
+                        ctx.fillRect(
+                            col * resolution, 
+                            row * resolution, 
+                            resolution - 1, 
+                            resolution - 1
+                        );
+                    }
+                }
+            }
+            // Reset shadow so it doesn't affect other drawing operations
+            ctx.shadowBlur = 0;
+        }
+
+        function gameLoop(timestamp) {
+            const speed = 1000 / speedRange.value;
+
+            if (timestamp - lastTime > speed) {
+                nextGeneration();
+                draw();
+                lastTime = timestamp;
+            }
+            animationId = requestAnimationFrame(gameLoop);
+        }
+
+        function handleInteraction(e) {
+            const rect = canvas.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+            const col = Math.floor(x / resolution);
+            const row = Math.floor(y / resolution);
+
+            if (col >= 0 && col < COLS && row >= 0 && row < ROWS) {
+                grid[col][row] = grid[col][row] ? 0 : 1;
+                draw();
+            }
+        }
+
+        // Event Listeners
+        startBtn.addEventListener('click', () => {
+            isRunning = !isRunning;
+            const icon = startBtn.querySelector('i');
+            if (isRunning) {
+                icon.className = 'fas fa_pause'; // Change to pause icon
+                icon.className = 'fas fa-pause';
+                startBtn.classList.add('active');
+                lastTime = performance.now();
+                animationId = requestAnimationFrame(gameLoop);
+            } else {
+                icon.className = 'fas fa-play';
+                startBtn.classList.remove('active');
+                cancelAnimationFrame(animationId);
+            }
+        });
+
+        randomBtn.addEventListener('click', randomizeGrid);
+
+        clearBtn.addEventListener('click', () => {
+            grid = createGrid();
+            generation = 0;
+            updateStats();
+            draw();
+        });
+
+        canvas.addEventListener('mousedown', (e) => {
+            handleInteraction(e);
+            canvas.addEventListener('mousemove', handleInteraction);
+        });
+
+        window.addEventListener('mouseup', () => {
+            canvas.removeEventListener('mousemove', handleInteraction);
+        });
+
+        // Initialize
+        randomizeGrid();
+    </script>
+</body>
+</html>

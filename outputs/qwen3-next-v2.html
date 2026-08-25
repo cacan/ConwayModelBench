@@ -1,0 +1,1249 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Conway's Game of Life | Modern Edition</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #6366f1;
+            --primary-light: #818cf8;
+            --primary-dark: #4f46e5;
+            --secondary: #10b981;
+            --secondary-light: #34d399;
+            --background: #0f172a;
+            --card-bg: #1e293b;
+            --text-primary: #e2e8f0;
+            --text-secondary: #94a3b8;
+            --cell-alive: #6366f1;
+            --cell-dead: #0f172a;
+            --glow: rgba(99, 102, 241, 0.3);
+            --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: var(--background);
+            color: var(--text-primary);
+            min-height: 100vh;
+            overflow-x: hidden;
+            padding: 20px;
+            background-image: 
+                radial-gradient(circle at 20% 30%, rgba(99, 102, 241, 0.1) 0%, transparent 50%),
+                radial-gradient(circle at 80% 70%, rgba(16, 185, 129, 0.1) 0%, transparent 50%);
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 30px;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 40px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        h1 {
+            font-size: 3.5rem;
+            font-weight: 700;
+            background: linear-gradient(90deg, var(--primary), var(--secondary));
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+            margin-bottom: 10px;
+            letter-spacing: -0.5px;
+        }
+
+        .subtitle {
+            font-size: 1.2rem;
+            color: var(--text-secondary);
+            font-weight: 400;
+            max-width: 700px;
+            margin: 0 auto;
+            line-height: 1.6;
+        }
+
+        .hero-gradient::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 400px;
+            height: 400px;
+            background: radial-gradient(circle, var(--primary) 0%, transparent 70%);
+            opacity: 0.1;
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+            animation: pulse 3s infinite alternate;
+        }
+
+        @keyframes pulse {
+            from { 
+                opacity: 0.05; 
+                transform: translate(-50%, -50%) scale(1);
+            }
+            to { 
+                opacity: 0.15; 
+                transform: translate(-50%, -50%) scale(1.2);
+            }
+        }
+
+        .main-content {
+            display: grid;
+            grid-template-columns: 3fr 1fr;
+            gap: 40px;
+            margin-bottom: 40px;
+        }
+
+        @media (max-width: 900px) {
+            .main-content {
+                grid-template-columns: 1fr;
+            }
+            
+            h1 {
+                font-size: 2.5rem;
+            }
+        }
+
+        #game-container {
+            position: relative;
+            border-radius: 24px;
+            overflow: hidden;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+            background-color: var(--card-bg);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            overflow: hidden;
+        }
+
+        #game-board {
+            display: block;
+            background-color: var(--cell-dead);
+            box-shadow: inset 0 0 30px rgba(0, 0, 0, 0.3);
+        }
+
+        .controls-container {
+            padding: 25px;
+            background-color: var(--card-bg);
+            border-radius: 24px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+        }
+
+        .controls-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            gap: 15px;
+            margin-bottom: 25px;
+        }
+
+        button {
+            padding: 16px 20px;
+            cursor: pointer;
+            border-radius: 18px;
+            font-weight: 500;
+            font-size: 14px;
+            letter-spacing: 0.8px;
+            text-transform: uppercase;
+            border: none;
+            transition: var(--transition);
+            position: relative;
+            overflow: hidden;
+            color: white;
+            outline: none;
+        }
+
+        button::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: linear-gradient(45deg, var(--primary), var(--secondary));
+            transform: rotate(45deg);
+            opacity: 0;
+            transition: var(--transition);
+        }
+
+        button:hover::before {
+            opacity: 1;
+        }
+
+        .btn-primary {
+            background-color: var(--primary);
+            box-shadow: 0 8px 20px rgba(99, 102, 241, 0.3);
+        }
+
+        .btn-secondary {
+            background-color: var(--secondary);
+            box-shadow: 0 8px 20px rgba(16, 185, 129, 0.3);
+        }
+
+        .btn-outline {
+            background-color: transparent;
+            border: 1px solid var(--primary);
+            color: var(--primary);
+        }
+
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        button.active {
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.5) !important;
+            transform: translateY(-2px);
+        }
+
+        .slider-container {
+            display: flex;
+            align-items: center;
+            margin-bottom: 25px;
+            gap: 15px;
+            color: var(--text-secondary);
+        }
+
+        .slider-container label {
+            min-width: 140px;
+            font-weight: 500;
+            user-select: none;
+        }
+
+        .slider-wrapper {
+            flex-grow: 1;
+            position: relative;
+            height: 8px;
+            background-color: rgba(255, 255, 255, 0.1);
+            border-radius: 4px;
+            overflow: hidden;
+            cursor: pointer;
+        }
+
+        .slider-wrapper input[type="range"] {
+            -webkit-appearance: none;
+            width: 100%;
+            height: 8px;
+            background-color: transparent;
+            outline: none;
+            position: relative;
+            z-index: 2;
+        }
+
+        .slider-wrapper input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background-color: var(--primary);
+            cursor: pointer;
+            box-shadow: 0 4px 10px rgba(99, 102, 241, 0.3);
+            border: none;
+        }
+
+        .slider-wrapper input[type="range"]::-moz-range-thumb {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background-color: var(--primary);
+            cursor: pointer;
+            box-shadow: 0 4px 10px rgba(99, 102, 241, 0.3);
+            border: none;
+        }
+
+        .slider-value {
+            font-weight: 600;
+            color: var(--text-primary);
+            min-width: 50px;
+            text-align: right;
+        }
+
+        .info-panel {
+            background-color: var(--card-bg);
+            border-radius: 24px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            padding: 25px;
+            margin-bottom: 40px;
+        }
+
+        .info-panel h3 {
+            color: var(--primary-light);
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .info-panel h3::before {
+            content: '✨';
+            font-size: 20px;
+        }
+
+        .info-panel p {
+            color: var(--text-secondary);
+            margin-bottom: 16px;
+            line-height: 1.7;
+        }
+
+        .feature-list {
+            list-style-type: none;
+            margin: 20px 0;
+        }
+
+        .feature-list li {
+            padding: 8px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .feature-list li:last-child {
+            border-bottom: none;
+        }
+
+        .feature-icon {
+            color: var(--secondary-light);
+            font-size: 18px;
+            min-width: 24px;
+        }
+
+        .stats-panel {
+            display: flex;
+            justify-content: space-around;
+            margin-top: 30px;
+            background-color: rgba(255, 255, 255, 0.05);
+            border-radius: 18px;
+            padding: 16px;
+            gap: 20px;
+        }
+
+        .stat-item {
+            text-align: center;
+            flex: 1;
+        }
+
+        .stat-number {
+            font-size: 1.7rem;
+            font-weight: 600;
+            color: var(--primary-light);
+            margin-bottom: 5px;
+        }
+
+        .stat-label {
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+        }
+
+        .particle-system {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 5;
+            opacity: 0.6;
+        }
+
+        .particle {
+            position: absolute;
+            border-radius: 50%;
+            background-color: var(--primary);
+            pointer-events: none;
+            animation: float 4s ease-out forwards;
+        }
+
+        @keyframes float {
+            0% {
+                transform: translate(0, 0) scale(1);
+                opacity: 1;
+            }
+            100% {
+                transform: translate(var(--tx), var(--ty)) scale(0);
+                opacity: 0;
+            }
+        }
+
+        .mode-indicator {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 25px;
+            padding: 10px;
+            border-radius: 18px;
+            background-color: rgba(99, 102, 241, 0.1);
+            border: 1px solid rgba(99, 102, 241, 0.3);
+        }
+
+        .mode-indicator span {
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+            margin-right: 8px;
+        }
+
+        .mode-switch {
+            display: flex;
+            align-items: center;
+            background-color: rgba(255, 255, 255, 0.1);
+            border-radius: 9999px;
+            padding: 4px;
+            cursor: pointer;
+            width: 60px;
+            height: 30px;
+        }
+
+        .mode-toggle {
+            display: block;
+            width: 22px;
+            height: 22px;
+            border-radius: 50%;
+            background-color: white;
+            transition: var(--transition);
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+        }
+
+        .mode-switch.active .mode-toggle {
+            transform: translateX(30px);
+            background-color: var(--secondary-light);
+        }
+
+        .loading-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(9, 24, 57, 0.8);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 10;
+        }
+
+        .loading-spinner {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            border: 4px solid transparent;
+            border-top-color: var(--primary);
+            border-bottom-color: var(--secondary);
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .tooltip {
+            position: absolute;
+            background-color: rgba(28, 47, 89, 0.95);
+            color: white;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 13px;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.2s;
+            z-index: 100;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+        }
+
+        .tooltip.show {
+            opacity: 1;
+        }
+
+        footer {
+            text-align: center;
+            margin-top: 50px;
+            padding: 20px;
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 15px;
+            }
+            
+            h1 {
+                font-size: 2rem;
+            }
+            
+            .subtitle {
+                font-size: 1rem;
+            }
+            
+            .main-content {
+                gap: 20px;
+            }
+            
+            #game-container {
+                border-radius: 16px;
+            }
+            
+            .controls-container, .info-panel {
+                padding: 20px;
+            }
+        }
+
+        /* Responsive grid */
+        @media (max-width: 480px) {
+            .controls-grid {
+                grid-template-columns: 1fr !important;
+            }
+            
+            .slider-container {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            
+            .slider-wrapper {
+                width: 100%;
+            }
+        }
+
+        /* Modern scrollbars */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background-color: rgba(255, 255, 255, 0.1);
+            border-radius: 4px;
+        }
+
+        /* Micro-interactions */
+        .cell-animation::before {
+            content: '';
+            position: absolute;
+            top: -3px;
+            left: -3px;
+            right: -3px;
+            bottom: -3px;
+            background: radial-gradient(circle, rgba(99, 102, 241, 0.5) 0%, transparent 70%);
+            border-radius: 8px;
+            animation: pulse-cell 0.6s ease-out;
+            pointer-events: none;
+        }
+
+        @keyframes pulse-cell {
+            from { opacity: 0; transform: scale(1); }
+            to { opacity: 0.2; transform: scale(1.5); }
+        }
+
+        .glow-animation {
+            animation: glow 3s ease-in-out infinite alternate;
+        }
+
+        @keyframes glow {
+            from {
+                box-shadow: 0 0 15px rgba(99, 102, 241, 0.3);
+            }
+            to {
+                box-shadow: 0 0 30px rgba(99, 102, 241, 0.6);
+            }
+        }
+
+        .wave-animation::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(99, 102, 241, 0.3) 0%, transparent 70%);
+            opacity: 0;
+            border-radius: 50%;
+            animation: wave-animation 2s ease-out forwards;
+        }
+
+        @keyframes wave-animation {
+            0% { 
+                transform: translate(-50%, -50%) scale(0);
+                opacity: 1; 
+            }
+            100% { 
+                transform: translate(-50%, -50%) scale(2);
+                opacity: 0; 
+            }
+        }
+
+        .preset-buttons {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+            overflow-x: auto;
+            padding-bottom: 10px;
+            scrollbar-width: none;
+            -ms-overflow-style: none;
+        }
+
+        .preset-buttons::-webkit-scrollbar {
+            height: 4px;
+        }
+
+        .preset-buttons::-webkit-scrollbar-thumb {
+            background-color: rgba(255, 255, 255, 0.1);
+            border-radius: 4px;
+        }
+
+        .preset-button {
+            white-space: nowrap;
+            padding: 8px 16px;
+            font-size: 13px;
+            background-color: rgba(99, 102, 241, 0.1);
+            border: 1px solid rgba(99, 102, 241, 0.3);
+            color: var(--primary);
+            border-radius: 18px;
+            cursor: pointer;
+            transition: var(--transition);
+        }
+
+        .preset-button:hover {
+            background-color: rgba(99, 102, 241, 0.2);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 15px rgba(99, 102, 241, 0.3);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header class="hero-gradient">
+            <h1>Conway's Game of Life</h1>
+            <p class="subtitle">A cellular automaton where simplicity gives rise to complexity — alive with emergent patterns and eternal beauty.</p>
+        </header>
+
+        <div class="main-content">
+            <div id="game-container">
+                <canvas id="game-board" width="700" height="700"></canvas>
+                
+                <!-- Particle system for visual effects -->
+                <div class="particle-system" id="particle-system"></div>
+                
+                <!-- Loading overlay -->
+                <div class="loading-overlay" id="loading-overlay">
+                    <div class="loading-spinner"></div>
+                </div>
+            </div>
+
+            <div class="controls-container">
+                <div class="mode-indicator">
+                    <span>Mode:</span>
+                    <div class="mode-switch" id="mode-toggle">
+                        <div class="mode-toggle"></div>
+                    </div>
+                    <span style="margin-left: 10px;">Draw</span>
+                </div>
+
+                <div class="controls-grid">
+                    <button class="btn-primary" id="start-btn">Play</button>
+                    <button class="btn-primary" id="pause-btn" disabled>Pause</button>
+                    <button class="btn-secondary" id="clear-btn">Clear</button>
+                    <button class="btn-outline" id="random-btn">Random</button>
+                </div>
+
+                <div class="slider-container">
+                    <label for="speed-slider">Speed: </label>
+                    <div class="slider-wrapper">
+                        <input type="range" id="speed-slider" min="1" max="30" value="12">
+                    </div>
+                    <span class="slider-value" id="speed-value">12</span> fps
+                </div>
+
+                <div class="slider-container">
+                    <label for="cell-size-slider">Cell Size: </label>
+                    <div class="slider-wrapper">
+                        <input type="range" id="cell-size-slider" min="5" max="30" value="12">
+                    </div>
+                    <span class="slider-value" id="cell-size-value">12</span> px
+                </div>
+
+                <!-- Preset patterns -->
+                <h3 style="color: var(--primary-light); margin-bottom: 15px; margin-top: 20px;">Presets:</h3>
+                <div class="preset-buttons">
+                    <button class="preset-button" data-pattern="glider">Glider</button>
+                    <button class="preset-button" data-pattern="blinker">Blinker</button>
+                    <button class="preset-button" data-pattern="pulsar">Pulsar</button>
+                    <button class="preset-button" data-pattern="gosper">Gosper Gun</button>
+                </div>
+
+                <!-- Stats -->
+                <div class="stats-panel">
+                    <div class="stat-item">
+                        <div class="stat-number" id="alive-cells">0</div>
+                        <div class="stat-label">Alive Cells</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-number" id="generations">0</div>
+                        <div class="stat-label">Generations</div>
+                    </div>
+                </div>
+
+                <!-- Info panel -->
+                <div class="info-panel">
+                    <h3>Game of Life Rules</h3>
+                    <p>Conway's Game of Life is a cellular automaton with simple rules that produce complex, lifelike behavior.</p>
+                    
+                    <ul class="feature-list">
+                        <li><span class="feature-icon">✓</span> Any live cell with fewer than 2 live neighbors dies (underpopulation)</li>
+                        <li><span class="feature-icon">✓</span> Live cells with 2 or 3 neighbors survive</li>
+                        <li><span class="feature-icon">✓</span> Live cells with more than 3 neighbors die (overpopulation)</li>
+                        <li><span class="feature-icon">✓</span> Dead cells with exactly 3 live neighbors become alive (reproduction)</li>
+                    </ul>
+
+                    <p>Click and drag to draw patterns. Click "Random" for a random configuration, or use the presets above.</p>
+                </div>
+            </div>
+        </div>
+
+        <footer>
+            <p>Created with ❤️ — A modern interpretation of John Conway's 1970 cellular automaton</p>
+        </footer>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const canvas = document.getElementById('game-board');
+            const ctx = canvas.getContext('2d');
+            
+            // Configuration
+            let cellSize = 12;
+            let speed = 12; // frames per second
+            let isRunning = false;
+            let animationId = null;
+            let generationCount = 0;
+            let aliveCells = 0;
+            let mode = 'draw'; // draw or watch
+            
+            // Grid dimensions (calculated based on canvas size)
+            let cols, rows;
+            let grid = [];
+            
+            // Particle system
+            const particleSystem = document.getElementById('particle-system');
+            const maxParticles = 50;
+            let particles = [];
+            
+            function createParticle(x, y, color = '#6366f1') {
+                if (particles.length >= maxParticles) return;
+                
+                const size = Math.random() * 8 + 2;
+                const particle = document.createElement('div');
+                particle.className = 'particle';
+                particle.style.width = `${size}px`;
+                particle.style.height = `${size}px`;
+                particle.style.backgroundColor = color;
+                particle.style.left = `${x}px`;
+                particle.style.top = `${y}px`;
+                
+                // Random direction
+                const angle = Math.random() * Math.PI * 2;
+                const distance = Math.random() * 80 + 40;
+                const tx = Math.cos(angle) * distance;
+                const ty = Math.sin(angle) * distance;
+                
+                particle.style.setProperty('--tx', `${tx}px`);
+                particle.style.setProperty('--ty', `${ty}px`);
+                
+                particleSystem.appendChild(particle);
+                particles.push({ element: particle, time: Date.now() });
+                
+                // Cleanup old particles
+                setTimeout(() => {
+                    if (particle.parentNode) {
+                        particle.parentNode.removeChild(particle);
+                    }
+                    particles = particles.filter(p => p.element !== particle);
+                }, 4000);
+            }
+            
+            function initGrid() {
+                cols = Math.floor(canvas.width / cellSize);
+                rows = Math.floor(canvas.height / cellSize);
+                
+                // Initialize grid with zeros
+                grid = Array(rows).fill().map(() => Array(cols).fill(0));
+                generationCount = 0;
+                updateStats();
+            }
+            
+            function drawGrid() {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                
+                // Draw cells
+                for (let i = 0; i < rows; i++) {
+                    for (let j = 0; j < cols; j++) {
+                        if (grid[i][j] === 1) {
+                            ctx.fillStyle = '#6366f1';
+                            
+                            // Add subtle glow effect to alive cells
+                            const gradient = ctx.createRadialGradient(
+                                j * cellSize + cellSize/2, 
+                                i * cellSize + cellSize/2, 
+                                0,
+                                j * cellSize + cellSize/2, 
+                                i * cellSize + cellSize/2, 
+                                cellSize
+                            );
+                            
+                            gradient.addColorStop(0, '#6366f1');
+                            gradient.addColorStop(0.7, '#4338ca');
+                            
+                            ctx.fillStyle = gradient;
+                            ctx.fillRect(j * cellSize + 1, i * cellSize + 1, cellSize - 2, cellSize - 2);
+                        }
+                    }
+                }
+                
+                // Draw grid lines
+                ctx.strokeStyle = 'rgba(255, 255, 255, 0.03)';
+                ctx.lineWidth = 0.5;
+                
+                // Vertical lines
+                for (let i = 0; i <= cols; i++) {
+                    ctx.beginPath();
+                    ctx.moveTo(i * cellSize, 0);
+                    ctx.lineTo(i * cellSize, canvas.height);
+                    ctx.stroke();
+                }
+                
+                // Horizontal lines
+                for (let i = 0; i <= rows; i++) {
+                    ctx.beginPath();
+                    ctx.moveTo(0, i * cellSize);
+                    ctx.lineTo(canvas.width, i * cellSize);
+                    ctx.stroke();
+                }
+            }
+            
+            function countNeighbors(grid, x, y) {
+                let sum = 0;
+                
+                for (let i = -1; i < 2; i++) {
+                    for (let j = -1; j < 2; j++) {
+                        // Don't count the cell itself
+                        if (i === 0 && j === 0) continue;
+                        
+                        let row = (x + i + rows) % rows; // Wrap around edges
+                        let col = (y + j + cols) % cols; // Wrap around edges
+                        
+                        sum += grid[row][col];
+                    }
+                }
+                
+                return sum;
+            }
+            
+            function updateGrid() {
+                // Create a new grid for the next generation
+                const nextGen = Array(rows).fill().map(() => Array(cols).fill(0));
+                
+                let aliveCount = 0;
+                
+                // Apply Conway's rules
+                for (let i = 0; i < rows; i++) {
+                    for (let j = 0; j < cols; j++) {
+                        let neighbors = countNeighbors(grid, i, j);
+                        
+                        if (grid[i][j] === 1) {
+                            // Live cell rules
+                            nextGen[i][j] = (neighbors === 2 || neighbors === 3) ? 1 : 0;
+                            
+                            // If cell stays alive, create a particle effect
+                            if (nextGen[i][j] === 1 && Math.random() > 0.75) {
+                                const x = j * cellSize + cellSize / 2;
+                                const y = i * cellSize + cellSize / 2;
+                                createParticle(x, y);
+                            }
+                        } else {
+                            // Dead cell rules
+                            nextGen[i][j] = (neighbors === 3) ? 1 : 0;
+                            
+                            // If cell becomes alive, create a particle effect
+                            if (nextGen[i][j] === 1 && Math.random() > 0.8) {
+                                const x = j * cellSize + cellSize / 2;
+                                const y = i * cellSize + cellSize / 2;
+                                createParticle(x, y, '#10b981');
+                            }
+                        }
+                        
+                        if (nextGen[i][j] === 1) aliveCount++;
+                    }
+                }
+                
+                grid = nextGen;
+                aliveCells = aliveCount;
+                generationCount++;
+                updateStats();
+            }
+            
+            function updateStats() {
+                document.getElementById('alive-cells').textContent = aliveCells;
+                document.getElementById('generations').textContent = generationCount;
+            }
+            
+            function gameLoop() {
+                if (isRunning) {
+                    updateGrid();
+                }
+                
+                drawGrid();
+                
+                if (isRunning) {
+                    const frameTime = 1000 / speed;
+                    animationId = setTimeout(gameLoop, frameTime);
+                }
+            }
+            
+            // Event Listeners
+            document.getElementById('start-btn').addEventListener('click', function() {
+                if (!isRunning && mode === 'watch') {
+                    isRunning = true;
+                    this.disabled = true;
+                    document.getElementById('pause-btn').disabled = false;
+                    gameLoop();
+                } else if (mode === 'draw') {
+                    // Switch to watch mode
+                    mode = 'watch';
+                    updateModeDisplay();
+                }
+            });
+            
+            document.getElementById('pause-btn').addEventListener('click', function() {
+                isRunning = false;
+                this.disabled = true;
+                document.getElementById('start-btn').disabled = false;
+                clearTimeout(animationId);
+            });
+            
+            document.getElementById('clear-btn').addEventListener('click', function() {
+                isRunning = false;
+                this.disabled = true;
+                document.getElementById('start-btn').disabled = false;
+                document.getElementById('pause-btn').disabled = true;
+                clearTimeout(animationId);
+                
+                grid = Array(rows).fill().map(() => Array(cols).fill(0));
+                generationCount = 0;
+                aliveCells = 0;
+                updateStats();
+                drawGrid();
+            });
+            
+            document.getElementById('random-btn').addEventListener('click', function() {
+                isRunning = false;
+                this.disabled = true;
+                document.getElementById('start-btn').disabled = false;
+                document.getElementById('pause-btn').disabled = true;
+                clearTimeout(animationId);
+                
+                for (let i = 0; i < rows; i++) {
+                    for (let j = 0; j < cols; j++) {
+                        grid[i][j] = Math.random() > 0.7 ? 1 : 0;
+                    }
+                }
+                generationCount = 0;
+                updateStats();
+                drawGrid();
+            });
+            
+            document.getElementById('speed-slider').addEventListener('input', function() {
+                speed = parseInt(this.value);
+                document.getElementById('speed-value').textContent = speed;
+                
+                // Restart animation if running
+                if (isRunning) {
+                    clearTimeout(animationId);
+                    gameLoop();
+                }
+            });
+            
+            document.getElementById('cell-size-slider').addEventListener('input', function() {
+                cellSize = parseInt(this.value);
+                document.getElementById('cell-size-value').textContent = cellSize;
+                
+                // Reinitialize grid with new size
+                initGrid();
+                drawGrid();
+                
+                // Reset simulation if running
+                if (isRunning) {
+                    clearTimeout(animationId);
+                    gameLoop();
+                }
+            });
+            
+            // Handle canvas clicks and drags for drawing
+            let isDrawing = false;
+            
+            canvas.addEventListener('mousedown', function(event) {
+                const rect = canvas.getBoundingClientRect();
+                const x = event.clientX - rect.left;
+                const y = event.clientY - rect.top;
+                
+                const col = Math.floor(x / cellSize);
+                const row = Math.floor(y / cellSize);
+                
+                if (col >= 0 && col < cols && row >= 0 && row < rows) {
+                    isDrawing = true;
+                    
+                    if (mode === 'draw') {
+                        grid[row][col] = grid[row][col] ? 0 : 1;
+                        drawGrid();
+                        
+                        // Create a particle effect for cell toggle
+                        createParticle(
+                            col * cellSize + cellSize / 2, 
+                            row * cellSize + cellSize / 2,
+                            grid[row][col] === 1 ? '#6366f1' : '#10b981'
+                        );
+                    } else if (mode === 'watch') {
+                        // In watch mode, clicking will start simulation
+                        document.getElementById('start-btn').click();
+                    }
+                }
+            });
+            
+            canvas.addEventListener('mousemove', function(event) {
+                const rect = canvas.getBoundingClientRect();
+                const x = event.clientX - rect.left;
+                const y = event.clientY - rect.top;
+                
+                const col = Math.floor(x / cellSize);
+                const row = Math.floor(y / cellSize);
+                
+                if (isDrawing && mode === 'draw' && 
+                    col >= 0 && col < cols && row >= 0 && row < rows) {
+                    
+                    grid[row][col] = 1;
+                    drawGrid();
+                    
+                    // Create a particle effect for each drawn cell
+                    createParticle(
+                        col * cellSize + cellSize / 2, 
+                        row * cellSize + cellSize / 2,
+                        '#6366f1'
+                    );
+                }
+            });
+            
+            canvas.addEventListener('mouseup', function() {
+                isDrawing = false;
+            });
+            
+            canvas.addEventListener('mouseleave', function() {
+                isDrawing = false;
+            });
+            
+            // Mode toggle
+            document.getElementById('mode-toggle').addEventListener('click', function() {
+                mode = mode === 'draw' ? 'watch' : 'draw';
+                updateModeDisplay();
+            });
+            
+            function updateModeDisplay() {
+                const toggle = document.querySelector('.mode-switch');
+                
+                if (mode === 'draw') {
+                    toggle.classList.remove('active');
+                    document.getElementById('start-btn').textContent = 'Play';
+                    document.getElementById('start-btn').disabled = false;
+                    document.getElementById('pause-btn').disabled = true;
+                    document.getElementById('random-btn').disabled = false;
+                } else {
+                    toggle.classList.add('active');
+                    document.getElementById('start-btn').textContent = 'Start Simulation';
+                    
+                    // If in watch mode, check if we have active cells
+                    let hasAliveCells = false;
+                    for (let i = 0; i < rows && !hasAliveCells; i++) {
+                        for (let j = 0; j < cols && !hasAliveCells; j++) {
+                            if (grid[i][j] === 1) {
+                                hasAliveCells = true;
+                            }
+                        }
+                    }
+                    
+                    if (!hasAliveCells) {
+                        document.getElementById('start-btn').disabled = true;
+                    } else {
+                        document.getElementById('start-btn').disabled = false;
+                    }
+                }
+                
+                // Update the mode indicator text
+                const modeText = document.querySelector('.mode-indicator span:last-child');
+                modeText.textContent = mode === 'draw' ? 'Draw' : 'Watch';
+            }
+            
+            // Preset patterns
+            document.querySelectorAll('.preset-button').forEach(button => {
+                button.addEventListener('click', function() {
+                    isRunning = false;
+                    this.disabled = true;
+                    document.getElementById('start-btn').disabled = false;
+                    document.getElementById('pause-btn').disabled = true;
+                    clearTimeout(animationId);
+                    
+                    const pattern = this.getAttribute('data-pattern');
+                    initGrid(); // Clear existing grid
+                    
+                    switch(pattern) {
+                        case 'glider':
+                            // Glider
+                            if (rows > 10 && cols > 10) {
+                                grid[5][6] = 1;
+                                grid[6][7] = 1;
+                                grid[7][5] = 1;
+                                grid[7][6] = 1;
+                                grid[7][7] = 1;
+                            }
+                            break;
+                            
+                        case 'blinker':
+                            // Blinker
+                            if (rows > 5 && cols > 5) {
+                                grid[Math.floor(rows/2)][Math.floor(cols/2)] = 1;
+                                grid[Math.floor(rows/2)][Math.floor(cols/2)-1] = 1;
+                                grid[Math.floor(rows/2)][Math.floor(cols/2)+1] = 1;
+                            }
+                            break;
+                            
+                        case 'pulsar':
+                            // Pulsar (period 3 oscillator)
+                            const size = 17;
+                            if (rows > size && cols > size) {
+                                let centerRow = Math.floor(rows / 2);
+                                let centerCol = Math.floor(cols / 2);
+                                
+                                // Horizontal bars
+                                for (let i = -4; i <= 4; i++) {
+                                    if (i !== 0) {
+                                        grid[centerRow-5][centerCol+i] = 1;
+                                        grid[centerRow+5][centerCol+i] = 1;
+                                        
+                                        grid[centerRow-2][centerCol+i] = 1;
+                                        grid[centerRow+2][centerCol+i] = 1;
+                                    }
+                                }
+                                
+                                // Vertical bars
+                                for (let i = -4; i <= 4; i++) {
+                                    if (i !== 0) {
+                                        grid[centerRow+i][centerCol-5] = 1;
+                                        grid[centerRow+i][centerCol+5] = 1;
+                                        
+                                        grid[centerRow+i][centerCol-2] = 1;
+                                        grid[centerRow+i][centerCol+2] = 1;
+                                    }
+                                }
+                            }
+                            break;
+                            
+                        case 'gosper':
+                            // Gosper glider gun
+                            if (rows > 40 && cols > 50) {
+                                const centerRow = Math.floor(rows / 3);
+                                const centerCol = Math.floor(cols / 2);
+                                
+                                // First row of gun
+                                grid[centerRow+1][centerCol-6] = 1;
+                                grid[centerRow+1][centerCol-5] = 1;
+                                
+                                grid[centerRow+2][centerCol-6] = 1;
+                                grid[centerRow+2][centerCol-5] = 1;
+                                
+                                // Second row
+                                grid[centerRow+3][centerCol-6] = 1;
+                                grid[centerRow+3][centerCol-5] = 1;
+                                grid[centerRow+3][centerCol-4] = 1;
+                                grid[centerRow+3][centerCol-1] = 1;
+                                
+                                // Third row
+                                grid[centerRow+4][centerCol-7] = 1;
+                                grid[centerRow+4][centerCol-3] = 1;
+                                grid[centerRow+4][centerCol] = 1;
+                                grid[centerRow+4][centerCol+1] = 1;
+                                
+                                // Fourth row
+                                grid[centerRow+5][centerCol-7] = 1;
+                                grid[centerRow+5][centerCol-3] = 1;
+                                grid[centerRow+5][centerCol] = 1;
+                                grid[centerRow+5][centerCol+1] = 1;
+                                
+                                // Fifth row
+                                grid[centerRow+6][centerCol-8] = 1;
+                                grid[centerRow+6][centerCol-7] = 1;
+                                grid[centerRow+6][centerCol-3] = 1;
+                                grid[centerRow+6][centerCol+2] = 1;
+                                
+                                // Sixth row
+                                grid[centerRow+7][centerCol-8] = 1;
+                                grid[centerRow+7][centerCol-4] = 1;
+                                grid[centerRow+7][centerCol+3] = 1;
+                                grid[centerRow+7][centerCol+2] = 1;
+                                
+                                // Seventh row
+                                grid[centerRow+8][centerCol-8] = 1;
+                                grid[centerRow+8][centerCol-4] = 1;
+                                grid[centerRow+8][centerCol+3] = 1;
+                                grid[centerRow+8][centerCol+2] = 1;
+                                
+                                // Eighth row
+                                grid[centerRow+9][centerCol-7] = 1;
+                                grid[centerRow+9][centerCol-4] = 1;
+                                
+                                grid[centerRow+10][centerCol-6] = 1;
+                                grid[centerRow+10][centerCol-5] = 1;
+                            }
+                            break;
+                    }
+                    
+                    drawGrid();
+                });
+            });
+            
+            // Initialize
+            initGrid();
+            drawGrid();
+            
+            // Set initial button states
+            document.getElementById('pause-btn').disabled = true;
+            
+            // Hide loading overlay after a short delay
+            setTimeout(() => {
+                const loadingOverlay = document.getElementById('loading-overlay');
+                if (loadingOverlay) {
+                    loadingOverlay.style.opacity = '0';
+                    setTimeout(() => {
+                        if (loadingOverlay.parentNode) {
+                            loadingOverlay.parentNode.removeChild(loadingOverlay);
+                        }
+                    }, 500);
+                }
+            }, 800);
+            
+            // Update mode display
+            updateModeDisplay();
+        });
+    </script>
+</body>
+</html>

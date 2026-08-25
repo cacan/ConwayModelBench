@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Conway's Game of Life</title>
+    <style>
+        :root {
+            --bg-color: #1a1a1a;
+            --grid-bg: #2d2d2d;
+            --cell-size: 30px; /* Size of each square */
+            --alive-color: #4ade80; /* Green for alive */
+            --dead-color: #ffffff;   /* White for dead (background) */
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-color);
+            color: white;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin: 0;
+            padding: 20px;
+        }
+
+        h1 {
+            margin-bottom: 10px;
+            font-weight: 300;
+            letter-spacing: 2px;
+        }
+
+        .controls {
+            margin-bottom: 20px;
+            display: flex;
+            gap: 10px;
+        }
+
+        button {
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+            background-color: #444;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            transition: background 0.3s;
+        }
+
+        button:hover {
+            background-color: #666;
+        }
+
+        button.active {
+            background-color: var(--alive-color);
+            color: black;
+            font-weight: bold;
+        }
+
+        /* The Grid Container */
+        .grid-container {
+            display: grid;
+            /* We will set columns via JS, but default to auto */
+            gap: 1px; 
+            background-color: var(--grid-bg);
+            border: 5px solid #444;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        }
+
+        /* Individual Cells */
+        .cell {
+            width: var(--cell-size);
+            height: var(--cell-size);
+            background-color: var(--dead-color);
+            cursor: pointer;
+        }
+
+        .cell.alive {
+            background-color: var(--alive-color);
+            box-shadow: inset 0 0 10px rgba(255,255,255,0.3);
+        }
+
+        /* Stats */
+        .stats {
+            margin-top: 15px;
+            font-size: 14px;
+            color: #aaa;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>GAME OF LIFE</h1>
+
+    <div class="controls">
+        <button id="btn-start" onclick="toggleGame()">Start Game</button>
+        <button onclick="randomizeGrid()">Randomize</button>
+        <button onclick="clearGrid()">Clear</button>
+    </div>
+
+    <div id="grid" class="grid-container"></div>
+
+    <div class="stats">
+        Generation: <span id="gen-count">0</span> | 
+        Alive Cells: <span id="alive-count">0</span>
+    </div>
+
+    <script>
+        // --- Configuration ---
+        const width = 60;   // Number of columns
+        const height = 40;  // Number of rows
+        let grid = [];      // Stores the state (0 or 1)
+        let isRunning = false;
+        let generation = 0;
+        let intervalId = null;
+
+        // --- DOM Elements ---
+        const gridElement = document.getElementById('grid');
+        const genDisplay = document.getElementById('gen-count');
+        const aliveDisplay = document.getElementById('alive-count');
+        const startBtn = document.getElementById('btn-start');
+
+        // --- Initialization ---
+        function init() {
+            createGrid();
+            randomizeGrid();
+            
+            // Add click listener to the whole grid container for easier targeting
+            gridElement.addEventListener('click', handleCellClick);
+        }
+
+        // Create the HTML structure for the grid
+        function createGrid() {
+            gridElement.style.gridTemplateColumns = `repeat(${width}, var(--cell-size))`;
+            
+            for (let i = 0; i < width * height; i++) {
+                const cell = document.createElement('div');
+                cell.classList.add('cell');
+                // Store index in dataset to easily find it later
+                cell.dataset.index = i; 
+                gridElement.appendChild(cell);
+            }
+        }
+
+        // --- Game Logic ---
+
+        function randomizeGrid() {
+            const cells = document.querySelectorAll('.cell');
+            grid = [];
+            
+            for (let i = 0; i < width * height; i++) {
+                // Randomly decide if cell is alive (50% chance)
+                const state = Math.random() > 0.8 ? 1 : 0; 
+                
+                // Update DOM immediately
+                cells[i].classList.toggle('alive', state === 1);
+                
+                grid.push(state);
+            }
+            
+            generation = 0;
+            updateStats();
+        }
+
+        function clearGrid() {
+            stopGame();
+            const cells = document.querySelectorAll('.cell');
+            grid = [];
+            
+            for (let i = 0; i < width * height; i++) {
+                cells[i].classList.remove('alive');
+                grid.push(0);
+            }
+            
+            generation = 0;
+            updateStats();
+        }
+
+        function toggleGame() {
+            if (isRunning) {
+                stopGame();
+            } else {
+                startGame();
+            }
+        }
+
+        function startGame() {
+            isRunning = true;
+            startBtn.textContent = "Pause Game";
+            startBtn.classList.add('active');
+            
+            // Run the update loop every 100ms
+            intervalId = setInterval(updateGrid, 100);
+        }
+
+        function stopGame() {
+            isRunning = false;
+            startBtn.textContent = "Start Game";
+            startBtn.classList.remove('active');
+            clearInterval(intervalId);
+        }
+
+        // The Core Loop: Calculates next generation and updates DOM
+        function updateGrid() {
+            let aliveCount = 0;
+            
+            // We need a copy of the grid to calculate changes, 
+            // otherwise updating one cell affects neighbor calculations for the same step.
+            const nextGen = [...grid]; 
+
+            for (let i = 0; i < width * height; i++) {
+                const state = grid[i];
+                
+                if (state === 1) aliveCount++;
+
+                // Calculate neighbors
+                let numNeighbors = countNeighbors(i);
+
+                // Apply Rules of Life
+                if (state === 0 && numNeighbors === 3) {
+                    nextGen[i] = 1; // Reproduction
+                } else if (state === 1 && (numNeighbors < 2 || numNeighbors > 3)) {
+                    nextGen[i] = 0; // Underpopulation or Overpopulation
+                }
+            }
+
+            grid = nextGen;
+            
+            // Update DOM based on new state
+            const cells = document.querySelectorAll('.cell');
+            for (let i = 0; i < width * height; i++) {
+                if (grid[i] === 1) {
+                    cells[i].classList.add('alive');
+                } else {
+                    cells[i].classList.remove('alive');
+                }
+            }
+
+            generation++;
+            updateStats();
+        }
+
+        // Helper: Count neighbors for a specific cell index
+        function countNeighbors(index) {
+            let sum = 0;
+            
+            // Get row and col from flat index
+            const x = Math.floor(index / width);
+            const y = index % width;
+
+            // Check all 8 surrounding cells
+            for (let i = -1; i < 2; i++) {
+                for (let j = -1; j < 2; j++) {
+                    if (i === 0 && j === 0) continue; // Skip self
+
+                    const newI = x + i;
+                    const newJ = y + j;
+
+                    // Wrap around edges (Toroidal array)
+                    let col = newJ % width; 
+                    if (col < 0) col += width;
+                    
+                    let row = newI % height;
+                    if (row < 0) row += height;
+
+                    sum += grid[row * width + col];
+                }
+            }
+            return sum;
+        }
+
+        function updateStats() {
+            genDisplay.textContent = generation;
+            aliveDisplay.textContent = aliveCount; // Note: aliveCount is calculated inside updateGrid, 
+                                                   // but we need to pass it or recalculate. 
+                                                   // Let's fix the scope issue below.
+        }
+
+        // Fix for stats updating correctly in closure
+        function updateStats(count) {
+            genDisplay.textContent = generation;
+            if (count !== undefined) aliveDisplay.textContent = count;
+        }
+
+        // --- Interaction ---
+        function handleCellClick(e) {
+            const cell = e.target.closest('.cell');
+            if (!cell) return;
+
+            const index = parseInt(cell.dataset.index);
+            
+            // Toggle state in data and DOM
+            grid[index] = grid[index] ? 0 : 1;
+            cell.classList.toggle('alive');
+        }
+
+        // Start the app
+        init();
+
+    </script>
+</body>
+</html>

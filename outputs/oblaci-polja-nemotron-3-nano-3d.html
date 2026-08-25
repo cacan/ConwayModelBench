@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Three.js Landscape – Snow, River & Sun (key‑only movement)</title>
+<style>
+  body { margin:0; overflow:hidden; background:#000; }
+  canvas { display:block; }
+</style>
+</head>
+<body>
+
+<!-- =========================================================
+     IMPORT‑MAP – keep this block exactly as you wrote it
+   ========================================================= -->
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
+
+<!-- =========================================================
+     MAIN SCRIPT – all three‑js code lives here
+   ========================================================= -->
+<script type="module">
+  // -----------------------------------------------------------
+  // IMPORTS
+  // -----------------------------------------------------------
+  import * as THREE from 'three';
+  import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+  import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+  import { TextureLoader } from 'three/addons/loaders/TextureLoader.js';
+  import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+  import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+  import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
+  import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+
+  console.log('Three.js version:', THREE.REVISION);
+
+  // -----------------------------------------------------------
+  // BASIC SETUP
+  // -----------------------------------------------------------
+  const renderer = new THREE.WebGLRenderer({ antialias:true });
+  renderer.setPixelRatio(window.devicePixelRatio);
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  renderer.outputEncoding = THREE.sRGBEncoding;
+  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  renderer.toneMappingExposure = 1;
+  document.body.appendChild(renderer.domElement);
+
+  const scene = new THREE.Scene();               // no fog – we’ll add a river instead
+
+  const camera = new THREE.PerspectiveCamera(
+      60,
+      window.innerWidth / window.innerHeight,
+      1,
+      4000
+  );
+  camera.position.set(0, 200, 400);                // <-- **fixed** start position
+  camera.lookAt(0, 150, 0);
+
+  // -----------------------------------------------------------
+  // OPTIONAL ORBIT CONTROLS (kept disabled until you explicitly enable them)
+  // -----------------------------------------------------------
+  const controls = new OrbitControls(camera, renderer.domElement);
+  controls.enableRotate = false;   // start with rotation disabled
+  controls.enableZoom   = false;
+  controls.enablePan    = false;
+
+  // -----------------------------------------------------------
+  // LIGHTING
+  // -----------------------------------------------------------
+  scene.add(new THREE.AmbientLight(0xffffff, 0.6));
+
+  const sunLight = new THREE.DirectionalLight(0xffdd88, 1.5);
+  sunLight.position.set(200, 500, 100);
+  scene.add(sunLight);
+
+  const hemiLight = new THREE.HemisphereLight(0x88ccee, 0x553322, 0.5);
+  scene.add(hemiLight);
+
+  // -----------------------------------------------------------
+  // SKY / BACKGROUND
+  // -----------------------------------------------------------
+  scene.background = new THREE.Color(0x88ccee);
+
+  // -----------------------------------------------------------
+  // TERRAIN (your original height‑map terrain)
+  // -----------------------------------------------------------
+  const size = 100;
+  const terrainGeo = new THREE.PlaneGeometry(3000, 3000, size, size);
+
+  const pos = terrainGeo.attributes.position;
+  for (let i = 0; i < pos.count; i++) {
+    const x = pos.getX(i) * 0.003;
+    const y = pos.getY(i) * 0.003;
+    const height = (Math.sin(x * 3) + Math.cos(y * 3)) * 60 +
+                   (Math.sin(x * 7) + Math.cos(y * 7)) * 20;
+    pos.setZ(i, height);
+  }
+  terrainGeo.computeVertexNormals();
+
+  const terrainMat = new THREE.MeshStandardMaterial({
+    color: 0x5a8f4a,
+    roughness: 0.9,
+    metalness: 0.1,
+    flatShading: true
+  });
+
+  const terrain = new THREE.Mesh(terrainGeo, terrainMat);
+  terrain.rotation.x = -Math.PI / 2;
+  terrain.position.y = -80;
+  scene.add(terrain);
+
+  // -----------------------------------------------------------
+  // SNOW CAPS – only on the highest parts of the terrain
+  // -----------------------------------------------------------
+  const snowMat = new THREE.MeshStandardMaterial({
+    color: 0xffffff,
+    transparent: true,
+    opacity: 0.7,
+    roughness: 0.9
+  });
+  const snowGeo = new THREE.BoxGeometry(4, 4, 4);
+  const snowGroup = new THREE.Group();
+  const SNOW_LEVEL = 150;                       // anything above this gets snow
+  for (let i = 0; i < pos.count; i++) {
+    const z = pos.getZ(i);
+    if (z > SNOW_LEVEL) {
+      const snow = new THREE.Mesh(snowGeo, snowMat);
+      const x = pos.getX(i);
+      const y = pos.getY(i) + 5;               // a little above the peak
+      const z = pos.getZ(i);
+      snow.position.set(x, y, z);
+      snow.scale.setScalar(0.4 + Math.random() * 0.3);
+      snowGroup.add(snow);
+    }
+  }
+  scene.add(snowGroup);
+
+  // -----------------------------------------------------------
+  // RIVER – a wide, reflective plane that replaces the old “fog”
+  // -----------------------------------------------------------
+  const riverGeo = new THREE.PlaneGeometry(2500, 80);
+  const riverMat = new THREE.MeshPhysicalMaterial({
+    color: 0x4a90e2,
+    transmission: 0.9,
+    ior: 1.33,
+    roughness: 0.02,
+    metalness: 0.0,
+    envMap: new THREE.CubeTextureLoader().load([
+      'https://threejs.org/examples/textures/cube/Bridge2/posx.jpg',
+      'https://threejs.org/examples/textures/cube/Bridge2/negx.jpg',
+      'https://threejs.org/examples/textures/cube/Bridge2/posy.jpg',
+      'https://threejs.org/examples/textures/cube/Bridge2/negy.jpg',
+      'https://threejs.org/examples/textures/cube/Bridge2/posz.jpg',
+      'https://threejs.org/examples/textures/cube/Bridge2/negz.jpg'
+    ]),
+    reflectivity: 0.9,
+    opacity: 0.95,
+    transparent: true
+  });
+  const river = new THREE.Mesh(riverGeo, riverMat);
+  river.rotation.x = -Math.PI / 2;
+  river.position.set(0, -130, 0);                // sits in the valley
+  scene.add(river);
+
+  // -----------------------------------------------------------
+  // TREES (your original simple tree generator)
+  // -----------------------------------------------------------
+  function createTree() {
+    const group = new THREE.Group();
+
+    // trunk
+    const trunkGeo = new THREE.CylinderGeometry(2, 3, 20, 8);
+    const trunkMat = new THREE.MeshStandardMaterial({ color: 0x4a3520 });
+    const trunk = new THREE.Mesh(trunkGeo, trunkMat);
+    trunk.position.y = 10;
+    group.add(trunk);
+
+    // foliage
+    const foliageGeo = new THREE.ConeGeometry(12, 30, 8);
+    const foliageMat = new THREE.MeshStandardMaterial({ color: 0x2d5016 });
+    const foliage = new THREE.Mesh(foliageGeo, foliageMat);
+    foliage.position.y = 30;
+    group.add(foliage);
+
+    return group;
+  }
+
+  for (let i = 0; i < 50; i++) {
+    const tree = createTree();
+
+    const x = Math.random() * 2000 - 1000;
+    const z = Math.random() * 2000 - 1000;
+
+    const heightY = (Math.sin(x * 0.003 * 3) + Math.cos(z * 0.003 * 3)) * 60 +
+                    (Math.sin(x * 0.003 * 7) + Math.cos(z * 0.003 * 7)) * 20;
+
+    tree.position.set(x, heightY - 80, z);
+    tree.rotation.y = Math.random() * Math.PI * 2;
+    tree.scale.setScalar(0.8 + Math.random() * 0.6);
+
+    scene.add(tree);
+  }
+
+  // -----------------------------------------------------------
+  // SUN (a glowing sphere)
+  // -----------------------------------------------------------
+  const sunRadius = 30;
+  const sunGeo = new THREE.SphereGeometry(sunRadius, 32, 32);
+  const sunMat = new THREE.MeshStandardMaterial({
+    color: 0xffdd33,
+    emissive: 0xffdd33,
+    emissiveIntensity: 1.5
+  });
+  const sunMesh = new THREE.Mesh(sunGeo, sunMat);
+  sunMesh.position.set(200, 420, 80);
+  scene.add(sunMesh);
+
+  const sunHelper = new THREE.PointLight(0xffdd33, 1.8, 0, 2);
+  sunHelper.position.copy(sunMesh.position);
+  scene.add(sunHelper);
+
+  // -----------------------------------------------------------
+  // KEYBOARD STATE (WASD / Arrow keys)
+  // -----------------------------------------------------------
+  const moveSpeed = 80;               // units per second – feel free to tweak
+  const velocity = new THREE.Vector3();
+  const keys = {
+    w: false, a: false, s: false, d: false,
+    ArrowUp: false, ArrowLeft: false, ArrowDown: false, ArrowRight: false
+  };
+
+  const onKeyDown = (e) => { const k = e.key.toLowerCase(); if (k in keys) keys[k] = true; };
+  const onKeyUp   = (e) => { const k = e.key.toLowerCase(); if (k in keys) keys[k] = false; };
+  window.addEventListener('keydown', onKeyDown);
+  window.addEventListener('keyup',   onKeyUp);
+
+  // -----------------------------------------------------------
+  // CAMERA MOVEMENT (only when a key is held)
+  // -----------------------------------------------------------
+  function moveCamera(deltaTime) {
+    // Do nothing if no movement key is pressed
+    if (!keys.w && !keys.s && !keys.a && !keys.d &&
+        !keys.ArrowUp && !keys.ArrowDown && !keys.ArrowLeft && !keys.ArrowRight) {
+      return;
+    }
+
+    // ---- 1️⃣ Forward / backward direction ----
+    const viewDir = new THREE.Vector3();
+    camera.getWorldDirection(viewDir);
+    viewDir.y = 0;
+    viewDir.normalize();
+
+    // ---- 2️⃣ Strafing (right/left) ----
+    const right = new THREE.Vector3();
+    right.crossVectors(viewDir, camera.up);
+    right.y = 0;
+    right.normalize();
+
+    // Build the displacement vector
+    const displacement = new THREE.Vector3();
+    if (keys.w || keys.ArrowUp)   displacement.copy(viewDir);          // forward
+    if (keys.s || keys.ArrowDown) displacement.copy(viewDir).negate(); // backward
+    if (keys.a) right.negate();                                    // strafe left
+    // D (strafe right) is already positive
+
+    displacement.copy(viewDir).multiplyScalar(moveSpeed * deltaTime); // forward/back
+    displacement.add(right.multiplyScalar(moveSpeed * deltaTime));     // strafe
+
+    camera.position.add(displacement);
+
+    // Keep the camera from going below the terrain (optional safety)
+    camera.position.y = Math.max(camera.position.y, -80);
+  }
+
+  // -----------------------------------------------------------
+  // ANIMATION LOOP
+  // -----------------------------------------------------------
+  const clock = new THREE.Clock();
+
+  function animate() {
+    requestAnimationFrame(animate);
+
+    const delta = clock.getDelta();
+    moveCamera(delta);          // <-- only moves when a key is held
+
+    // Update OrbitControls *only* for damping (it won’t move the camera
+    // unless we explicitly enable rotation/zoom/pan)
+    controls.update();
+
+    renderer.render(scene, camera);
+  }
+  animate();
+
+  // -----------------------------------------------------------
+  // RESPONSIVE RESIZE
+  // -----------------------------------------------------------
+  window.addEventListener('resize', () => {
+    const w = window.innerWidth;
+    const h = window.innerHeight;
+    camera.aspect = w / h;
+    camera.updateProjectionMatrix();
+    renderer.setSize(w, h);
+  });
+
+  console.log('✅ Scene ready – press W/A/S/D or Arrow keys to move. Camera stays still until a key is pressed.');
+</script>
+</body>
+</html>

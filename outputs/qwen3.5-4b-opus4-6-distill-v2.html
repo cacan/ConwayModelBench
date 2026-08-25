@@ -1,0 +1,845 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Conway's Game of Life</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #0ea5e9;
+            --accent: #8b5cf6;
+            --success: #10b981;
+            --danger: #ef4444;
+            --warning: #f59e0b;
+            
+            --bg-primary: #0f172a;
+            --bg-secondary: #1e293b;
+            --bg-card: rgba(30, 41, 59, 0.8);
+            --text-primary: #f8fafc;
+            --text-secondary: #94a3b8;
+            
+            --border-radius: 16px;
+            --shadow-lg: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--bg-primary);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: 
+                radial-gradient(ellipse at 20% 20%, rgba(14, 165, 233, 0.1) 0%, transparent 50%),
+                radial-gradient(ellipse at 80% 80%, rgba(139, 92, 246, 0.1) 0%, transparent 50%),
+                radial-gradient(ellipse at 50% 50%, rgba(16, 185, 129, 0.05) 0%, transparent 70%);
+            pointer-events: none;
+        }
+
+        .container {
+            display: flex;
+            gap: 30px;
+            max-width: 1400px;
+            width: 100%;
+            align-items: center;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        /* Stats Panel */
+        .stats-panel {
+            background: var(--bg-card);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: var(--border-radius);
+            padding: 24px;
+            width: 280px;
+            box-shadow: var(--shadow-lg);
+        }
+
+        .stats-panel h2 {
+            color: var(--text-primary);
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin-bottom: 24px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .stats-panel h2::before {
+            content: '⚡';
+            color: var(--primary);
+        }
+
+        .stat-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 16px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        .stat-item:last-child {
+            border-bottom: none;
+        }
+
+        .stat-label {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .stat-value {
+            color: var(--text-primary);
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 1.25rem;
+            font-weight: 600;
+        }
+
+        .stat-value.highlight {
+            color: var(--primary);
+        }
+
+        /* Canvas Container */
+        .canvas-container {
+            position: relative;
+            padding: 10px;
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.05));
+            border-radius: var(--border-radius);
+            box-shadow: var(--shadow-lg);
+        }
+
+        canvas {
+            display: block;
+            cursor: crosshair;
+            background: #000;
+            border-radius: 12px;
+            transition: transform 0.3s ease, filter 0.3s ease;
+        }
+
+        canvas:hover {
+            filter: brightness(1.1);
+        }
+
+        /* Controls */
+        .controls {
+            margin-top: 24px;
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        .btn {
+            padding: 14px 20px;
+            border: none;
+            border-radius: 10px;
+            font-family: inherit;
+            font-size: 0.95rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.3);
+        }
+
+        .btn:active {
+            transform: translateY(0);
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--primary), #06b6d4);
+            color: white;
+            box-shadow: 0 4px 15px rgba(14, 165, 233, 0.4);
+        }
+
+        .btn-primary:hover {
+            box-shadow: 0 8px 25px rgba(14, 165, 233, 0.5);
+        }
+
+        .btn-secondary {
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .btn-secondary:hover {
+            background: rgba(255, 255, 255, 0.1);
+            border-color: var(--text-primary);
+        }
+
+        .btn-danger {
+            background: linear-gradient(135deg, #ef4444, #dc2626);
+            color: white;
+            box-shadow: 0 4px 15px rgba(239, 68, 68, 0.4);
+        }
+
+        .btn-danger:hover {
+            box-shadow: 0 8px 25px rgba(239, 68, 68, 0.5);
+        }
+
+        .btn-group {
+            display: flex;
+            gap: 12px;
+        }
+
+        /* Pattern Selector */
+        .pattern-selector {
+            position: absolute;
+            top: -45px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: var(--bg-card);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 8px;
+            border-radius: 9999px;
+            box-shadow: var(--shadow-lg);
+        }
+
+        .pattern-selector button {
+            padding: 6px 14px;
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            background: transparent;
+            border: none;
+            border-radius: 20px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .pattern-selector button:hover {
+            color: var(--primary);
+            background: rgba(14, 165, 233, 0.1);
+        }
+
+        /* Pattern Badge */
+        .pattern-badge {
+            position: absolute;
+            top: -25px;
+            right: 10px;
+            padding: 6px 14px;
+            background: linear-gradient(135deg, var(--accent), #a855f7);
+            color: white;
+            border-radius: 9999px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        /* Animation */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: scale(0.95); }
+            to { opacity: 1; transform: scale(1); }
+        }
+
+        .canvas-container.animate {
+            animation: fadeIn 0.4s ease forwards;
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: var(--bg-primary);
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        /* Legend */
+        .legend {
+            display: flex;
+            gap: 16px;
+            margin-top: 24px;
+            padding-top: 24px;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--text-secondary);
+            font-size: 0.85rem;
+        }
+
+        .legend-color {
+            width: 12px;
+            height: 12px;
+            border-radius: 3px;
+        }
+
+        .legend-color.active {
+            background: var(--success);
+            box-shadow: 0 0 8px rgba(16, 185, 129, 0.5);
+        }
+
+        .legend-color.inactive {
+            background: #334155;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .container {
+                flex-direction: column;
+                align-items: center;
+            }
+
+            .stats-panel, .canvas-container {
+                width: 90%;
+            }
+
+            .pattern-selector {
+                position: static;
+                transform: none;
+                margin-bottom: 12px;
+            }
+        }
+
+        /* Toggle Switch */
+        .toggle-switch {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 8px 16px;
+            background: var(--bg-secondary);
+            border-radius: 9999px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .toggle-switch.active {
+            background: rgba(14, 165, 233, 0.2);
+        }
+
+        .toggle-switch:hover {
+            transform: translateY(-1px);
+        }
+
+        .toggle-circle {
+            width: 18px;
+            height: 18px;
+            background: #475569;
+            border-radius: 50%;
+            transition: all 0.3s ease;
+        }
+
+        .toggle-switch.active .toggle-circle {
+            background: var(--primary);
+            box-shadow: 0 0 10px rgba(14, 165, 233, 0.5);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Stats Panel -->
+        <aside class="stats-panel">
+            <h2>Statistics</h2>
+            
+            <div class="stat-item">
+                <span class="stat-label">Generation</span>
+                <span class="stat-value highlight" id="generation">0</span>
+            </div>
+            
+            <div class="stat-item">
+                <span class="stat-label">Population</span>
+                <span class="stat-value" id="population">0 / 42,560</span>
+            </div>
+            
+            <div class="stat-item">
+                <span class="stat-label">Speed</span>
+                <span class="stat-value" id="fps">60 FPS</span>
+            </div>
+        </aside>
+
+        <!-- Canvas & Controls -->
+        <main style="position: relative;">
+            <button class="pattern-selector">
+                <button onclick="loadPattern('random')">🎲 Random</button>
+                <button onclick="loadPattern('glider-gun')">🚀 Glider Gun</button>
+                <button onclick="loadPattern('pulsar')">⚡ Pulsar</button>
+                <button onclick="loadPattern('gosper-glider-gun')">🔫 Gosper</button>
+            </button>
+
+            <div class="pattern-badge" id="current-pattern">Random</div>
+
+            <div class="canvas-container animate" id="canvas-container">
+                <canvas id="gameCanvas"></canvas>
+            </div>
+        </main>
+
+        <!-- Legend -->
+        <aside class="stats-panel">
+            <h2>Legend</h2>
+            <div class="legend">
+                <div class="legend-item">
+                    <div class="legend-color active"></div>
+                    <span>Alive</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color inactive"></div>
+                    <span>Dead</span>
+                </div>
+            </div>
+
+            <div style="margin-top: 20px;">
+                <h3 style="color: var(--text-primary); font-size: 1rem; margin-bottom: 16px;">How to Play</h3>
+                <ul style="color: var(--text-secondary); font-size: 0.85rem; line-height: 2;">
+                    <li>🖱️ <strong>Click/Draw:</strong> Toggle cells on canvas</li>
+                    <li>⏯️ <strong>Play/Pause:</strong> Control simulation</li>
+                    <li>🔄 <strong>New Pattern:</strong> Reset or load preset</li>
+                    <li>❌ <strong>Clear All:</strong> Start fresh</li>
+                </ul>
+            </div>
+        </aside>
+
+        <!-- Main Controls -->
+        <section style="display: flex; gap: 20px; align-items: center;">
+            <button class="btn btn-primary" onclick="togglePlay()">
+                ⏯️ 
+                <span id="play-text">Start</span>
+            </button>
+
+            <div class="btn-group">
+                <button class="btn btn-secondary" onclick="loadPattern('random')">
+                    🎲 New Random
+                </button>
+                <button class="btn btn-danger" onclick="clearAll()">
+                    ❌ Clear All
+                </button>
+            </div>
+
+            <label class="toggle-switch">
+                <span style="color: var(--text-secondary); font-size: 0.9rem;">Auto-Draw</span>
+                <div class="toggle-circle"></div>
+            </label>
+        </section>
+    </div>
+
+    <script>
+        // === Configuration ===
+        const CONFIG = {
+            cellSize: 16,
+            cols: 40,
+            rows: 25,
+            fpsTarget: 30
+        };
+
+        // === State ===
+        let grid = [];
+        let isRunning = false;
+        let animationId = null;
+        let generation = 0;
+        let cellCount = 0;
+        let autoDraw = false;
+        let lastFrameTime = performance.now();
+        let frameCount = 0;
+        let lastFpsUpdate = performance.now();
+
+        // === DOM Elements ===
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const container = document.getElementById('canvas-container');
+        const generationDisplay = document.getElementById('generation');
+        const populationDisplay = document.getElementById('population');
+        const fpsDisplay = document.getElementById('fps');
+
+        // === Initialize ===
+        function init() {
+            resize();
+            window.addEventListener('resize', () => {
+                container.classList.remove('animate');
+                void container.offsetWidth;
+                setTimeout(() => {
+                    resize();
+                    renderGrid();
+                }, 50);
+            });
+            
+            setupCanvasInteraction();
+            loadPattern('random');
+        }
+
+        function resize() {
+            const maxWidth = Math.min(window.innerWidth - 60, 700);
+            const maxHeight = window.innerHeight * 0.6;
+            
+            canvas.width = CONFIG.cols * CONFIG.cellSize;
+            canvas.height = CONFIG.rows * CONFIG.cellSize;
+            
+            CONFIG.cols = Math.floor(canvas.width / CONFIG.cellSize);
+            CONFIG.rows = Math.floor(canvas.height / CONFIG.cellSize);
+        }
+
+        function createGrid() {
+            grid = [];
+            for (let r = 0; r < CONFIG.rows; r++) {
+                const row = [];
+                for (let c = 0; c < CONFIG.cols; c++) {
+                    row.push(Math.random() > 0.85 ? 1 : 0);
+                    if (row[c] === 1) cellCount++;
+                }
+                grid.push(row);
+            }
+            updateStats();
+        }
+
+        function renderGrid() {
+            // Clear canvas
+            ctx.fillStyle = '#000';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Draw active cells with glow effect
+            for (let r = 0; r < CONFIG.rows; r++) {
+                for (let c = 0; c < CONFIG.cols; c++) {
+                    if (grid[r][c] === 1) {
+                        const x = c * CONFIG.cellSize;
+                        const y = r * CONFIG.cellSize;
+                        
+                        // Glow effect
+                        ctx.shadowBlur = 12;
+                        ctx.shadowColor = '#0ea5e9';
+                        
+                        // Cell body
+                        ctx.fillStyle = '#38bdf8';
+                        ctx.fillRect(x + 1, y + 1, CONFIG.cellSize - 2, CONFIG.cellSize - 2);
+                        
+                        // Reset shadow for performance
+                        ctx.shadowBlur = 0;
+                    }
+                }
+            }
+
+            // Draw grid lines (subtle)
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.03)';
+            ctx.lineWidth = 1;
+            
+            for (let r = 0; r <= CONFIG.rows; r++) {
+                ctx.beginPath();
+                ctx.moveTo(0, r * CONFIG.cellSize);
+                ctx.lineTo(canvas.width, r * CONFIG.cellSize);
+                ctx.stroke();
+            }
+            
+            for (let c = 0; c <= CONFIG.cols; c++) {
+                ctx.beginPath();
+                ctx.moveTo(c * CONFIG.cellSize, 0);
+                ctx.lineTo(c * CONFIG.cellSize, canvas.height);
+                ctx.stroke();
+            }
+        }
+
+        // === Game Logic ===
+        function countNeighbors(x, y) {
+            let sum = 0;
+            for (let dy = -1; dy <= 1; dy++) {
+                for (let dx = -1; dx <= 1; dx++) {
+                    if (dx !== 0 || dy !== 0) {
+                        const nx = (x + dx + CONFIG.cols) % CONFIG.cols;
+                        const ny = (y + dy + CONFIG.rows) % CONFIG.rows;
+                        sum += grid[ny][nx];
+                    }
+                }
+            }
+            return sum;
+        }
+
+        function nextGeneration() {
+            let nextGrid = [];
+            
+            for (let r = 0; r < CONFIG.rows; r++) {
+                const newRow = [];
+                for (let c = 0; c < CONFIG.cols; c++) {
+                    const neighbors = countNeighbors(c, r);
+                    const alive = grid[r][c] === 1;
+
+                    let nextState = 0;
+                    
+                    if (alive) {
+                        // Survival: needs 2 or 3 neighbors
+                        if (neighbors === 2 || neighbors === 3) {
+                            nextState = 1;
+                            cellCount++;
+                        } else {
+                            cellCount--;
+                        }
+                    } else {
+                        // Reproduction: exactly 3 neighbors
+                        if (neighbors === 3) {
+                            nextState = 1;
+                            cellCount++;
+                        }
+                    }
+
+                    newRow.push(nextState);
+                }
+                nextGrid.push(newRow);
+            }
+
+            grid = nextGrid;
+            generation++;
+            updateStats();
+        }
+
+        // === Animation Loop ===
+        function gameLoop(currentTime) {
+            const deltaTime = currentTime - lastFrameTime;
+            
+            if (!isRunning && autoDraw) {
+                autoDraw = false;
+                renderGrid();
+            } else if (deltaTime > 1000 / CONFIG.fpsTarget) {
+                nextGeneration();
+                renderGrid();
+                
+                frameCount++;
+                lastFpsUpdate = currentTime;
+            }
+
+            lastFrameTime = currentTime - ((currentTime - lastFpsUpdate) % (1000 / CONFIG.fpsTarget));
+            
+            animationId = requestAnimationFrame(gameLoop);
+        }
+
+        function togglePlay() {
+            isRunning = !isRunning;
+            const playText = document.getElementById('play-text');
+            
+            if (isRunning) {
+                playText.textContent = 'Pause';
+                gameLoop(performance.now());
+            } else {
+                playText.textContent = 'Resume';
+                cancelAnimationFrame(animationId);
+            }
+        }
+
+        // === Stats Updates ===
+        function updateStats() {
+            generationDisplay.textContent = generation.toLocaleString();
+            populationDisplay.textContent = `${cellCount} / ${CONFIG.cols * CONFIG.rows.toLocaleString()}`;
+            
+            const fps = Math.round(1000 / deltaTime) || 60;
+            fpsDisplay.textContent = `${fps} FPS`;
+        }
+
+        // === Pattern Loading ===
+        function loadPattern(type) {
+            container.classList.remove('animate');
+            void container.offsetWidth;
+            
+            setTimeout(() => {
+                container.classList.add('animate');
+                
+                if (type === 'random') {
+                    createGrid();
+                    document.getElementById('current-pattern').textContent = 'Random';
+                } else if (type === 'glider-gun') {
+                    clearAll();
+                    drawGliderGun();
+                    generation = 1; // Start after one step
+                } else if (type === 'pulsar') {
+                    clearAll();
+                    drawPulsar();
+                    generation = 1;
+                } else if (type === 'gosper-glider-gun') {
+                    clearAll();
+                    drawGosperGliderGun();
+                    generation = 32; // Start after some steps
+                }
+            }, 50);
+        }
+
+        function clearAll() {
+            isRunning = false;
+            cancelAnimationFrame(animationId);
+            grid = [];
+            cellCount = 0;
+            generation = 0;
+            updateStats();
+            
+            container.classList.remove('animate');
+            void container.offsetWidth;
+            
+            setTimeout(() => {
+                renderGrid();
+                container.classList.add('animate');
+            }, 50);
+        }
+
+        // === Preset Patterns ===
+        function drawGliderGun() {
+            const startX = CONFIG.cols - 12;
+            for (let y = 14; y < CONFIG.rows; y++) {
+                if (y % 3 === 0) {
+                    grid[startX][y] = 1; // Main line
+                    cellCount++;
+                    
+                    const gunOffset = [5, 7];
+                    for (const [dx, dy] of gunOffset) {
+                        grid[startX + dx][y - dy] = 1;
+                        cellCount++;
+                    }
+                } else if (y % 3 === 2) {
+                    // Glider positions
+                    const gliders = [[0,0], [2,-1], [3,-2], [4,-3], [5,-1]];
+                    for (const [gx, gy] of gliders) {
+                        grid[startX + gx][y - 2 + gy] = 1;
+                        cellCount++;
+                    }
+                }
+            }
+        }
+
+        function drawPulsar() {
+            const x = CONFIG.cols - 8;
+            
+            // Top half
+            for (let y = 0; y < 6; y++) {
+                grid[x][y] = 1; cellCount++;
+                grid[x + 2][y] = 1; cellCount++;
+                grid[x + 4][y] = 1; cellCount++;
+            }
+            
+            // Middle (pulse point)
+            for (let y = 6; y < 13; y++) {
+                if (y === 8 || y === 9) {
+                    grid[x][y] = 1; cellCount++;
+                    grid[x + 2][y] = 1; cellCount++;
+                    grid[x + 4][y] = 1; cellCount++;
+                    
+                    for (let dx = -1; dx <= 1; dx++) {
+                        for (let dy = -1; dy <= 1; dy++) {
+                            if (dx !== 0 || dy !== 0) {
+                                grid[x + dx][y + dy] = 1;
+                                cellCount++;
+                            }
+                        }
+                    }
+                } else {
+                    grid[x][y] = 1; cellCount++;
+                    grid[x + 2][y] = 1; cellCount++;
+                    grid[x + 4][y] = 1; cellCount++;
+                }
+            }
+            
+            // Bottom half (mirror)
+            for (let y = 0; y < 6; y++) {
+                grid[CONFIG.rows - 2 - y][x] = 1; cellCount++;
+                grid[CONFIG.rows - 2 - y][x + 2] = 1; cellCount++;
+                grid[CONFIG.rows - 2 - y][x + 4] = 1; cellCount++;
+            }
+        }
+
+        function drawGosperGliderGun() {
+            // This is a complex pattern, simplified for demo
+            const startX = CONFIG.cols - 8;
+            
+            // Main gun line (partial)
+            for (let y = 9; y < 15; y++) grid[startX][y] = 1; cellCount++;
+            
+            // Glider emitter
+            const glider = [[2,0], [3,-1], [4,-2], [5,-3], [6,-1]];
+            for (const [gx, gy] of glider) {
+                grid[startX + gx][9 - gy] = 1; cellCount++;
+            }
+            
+            // Secondary guns and patterns
+            const positions = [[8,0], [10,4], [12,7], [13,6]];
+            for (const pos of positions) {
+                grid[startX + pos[0]][pos[1]] = 1; cellCount++;
+                grid[startX + pos[0] + 1][pos[1] - 1] = 1; cellCount++;
+                grid[startX + pos[0] + 2][pos[1] - 2] = 1; cellCount++;
+            }
+        }
+
+        // === Canvas Interaction ===
+        function setupCanvasInteraction() {
+            let isDrawing = false;
+
+            const getCellAt = (e) => {
+                const rect = canvas.getBoundingClientRect();
+                const x = Math.round((e.clientX - rect.left) / CONFIG.cellSize);
+                const y = Math.round((e.clientY - rect.top) / CONFIG.cellSize);
+                
+                return { x, y };
+            };
+
+            const toggleCell = (cell) => {
+                if (!autoDraw && cell.x >= 0 && cell.x < CONFIG.cols && 
+                    cell.y >= 0 && cell.y < CONFIG.rows) {
+                    grid[cell.y][cell.x] = grid[cell.y][cell.x] ? 0 : 1;
+                    renderGrid();
+                }
+            };
+
+            canvas.addEventListener('mousedown', (e) => {
+                isDrawing = true;
+                toggleCell(getCellAt(e));
+            });
+
+            canvas.addEventListener('mousemove', (e) => {
+                if (!isDrawing) return;
+                const cell = getCellAt(e);
+                toggleCell(cell);
+            });
+
+            canvas.addEventListener('mouseup', () => isDrawing = false);
+            canvas.addEventListener('mouseleave', () => isDrawing = false);
+        }
+
+        // === Auto-Draw Toggle ===
+        document.querySelector('.toggle-switch').addEventListener('click', () => {
+            autoDraw = !autoDraw;
+            const toggle = document.querySelector('.toggle-switch');
+            
+            if (autoDraw) {
+                toggle.classList.add('active');
+                isRunning = true;
+                togglePlay(); // Start animation
+            } else {
+                toggle.classList.remove('active');
+                isRunning = false;
+            }
+        });
+
+        // === Start ===
+        init();
+    </script>
+</body>
+</html>

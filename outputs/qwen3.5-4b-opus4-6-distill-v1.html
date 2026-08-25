@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Conway's Game of Life</title>
+    <style>
+        :root {
+            --bg-color: #1a1a1a;
+            --grid-bg: #000000;
+            --cell-active: #00ff88; /* Neon Green */
+            --text-color: #ffffff;
+            --panel-bg: #2d2d2d;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+        }
+
+        h1 {
+            margin-bottom: 10px;
+            font-weight: 300;
+            letter-spacing: 2px;
+        }
+
+        .controls {
+            background-color: var(--panel-bg);
+            padding: 15px 25px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            display: flex;
+            gap: 15px;
+            align-items: center;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+        }
+
+        button {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: bold;
+            transition: background 0.2s, transform 0.1s;
+        }
+
+        button:hover {
+            opacity: 0.9;
+            transform: translateY(-1px);
+        }
+
+        button:active {
+            transform: translateY(1px);
+        }
+
+        #btn-start { background-color: var(--cell-active); color: #000; }
+        #btn-stop { background-color: #ff4757; color: white; display: none; }
+        #btn-clear { background-color: #5f27cd; color: white; }
+
+        .canvas-container {
+            position: relative;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.5);
+        }
+
+        canvas {
+            display: block;
+            background-color: var(--grid-bg);
+            cursor: crosshair;
+        }
+
+        .stats {
+            margin-top: 10px;
+            font-size: 0.9rem;
+            color: #aaa;
+        }
+
+        /* Tooltips for controls */
+        .tooltip {
+            position: relative;
+            cursor: help;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>GAME OF LIFE</h1>
+
+    <div class="controls">
+        <button id="btn-start" class="tooltip" title="Start Simulation">Play</button>
+        <button id="btn-stop" class="tooltip" title="Pause Simulation">Pause</button>
+        <button id="btn-clear" class="tooltip" title="Clear Canvas">Clear</button>
+        <span style="color: #888; font-size: 0.8rem;">Click grid to toggle cells</span>
+    </div>
+
+    <div class="canvas-container">
+        <canvas id="gameCanvas"></canvas>
+    </div>
+
+    <div class="stats">
+        Cells: <span id="cell-count">0</span> | Generation: <span id="generation">0</span>
+    </div>
+
+<script>
+    /**
+     * CONFIGURATION
+     */
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+    
+    // Responsive settings
+    let cellSize = 15; 
+    let cols, rows;
+    
+    // Game State Variables
+    let grid = [];
+    let isRunning = false;
+    let animationFrameId;
+    let generation = 0;
+
+    /**
+     * INITIALIZATION
+     */
+    function resizeCanvas() {
+        // Make canvas roughly 80% of the window width/height
+        const maxWidth = Math.min(window.innerWidth - 40, 600);
+        const maxHeight = Math.min(window.innerHeight - 300, 500);
+
+        // Calculate grid dimensions based on cell size to ensure it divides evenly
+        cols = Math.floor(maxWidth / cellSize);
+        rows = Math.floor(maxHeight / cellSize);
+
+        canvas.width = cols * cellSize;
+        canvas.height = rows * cellSize;
+
+        initGrid();
+    }
+
+    function initGrid() {
+        grid = [];
+        for (let r = 0; r < rows; r++) {
+            let row = [];
+            for (let c = 0; c < cols; c++) {
+                // Randomly start with some cells alive
+                row.push(Math.random() > 0.85 ? 1 : 0);
+            }
+            grid.push(row);
+        }
+        updateStats();
+    }
+
+    /**
+     * CORE LOGIC
+     */
+    
+    // Get neighbor count for a specific cell at (x, y)
+    function countNeighbors(grid, x, y) {
+        let sum = 0;
+        for (let i = -1; i < 2; i++) {
+            for (let j = -1; j < 2; j++) {
+                // Calculate coordinates handling wrapping (Toroidal topology)
+                // Or use boundary checks. Here we do a simple check against grid size.
+                
+                let col = x + i;
+                let row = y + j;
+
+                if (col >= 0 && col < cols && row >= 0 && row < rows) {
+                    sum += grid[row][col];
+                }
+            }
+        }
+        // Exclude self from neighbors
+        return sum - grid[y][x];
+    }
+
+    function computeNextGeneration() {
+        let nextGrid = [];
+        
+        for (let r = 0; r < rows; r++) {
+            let newRow = [];
+            
+            for (let c = 0; c < cols; c++) {
+                const currentCell = grid[r][c];
+                const neighbors = countNeighbors(grid, c, r);
+
+                // Conway's Rules:
+                // 1. Underpopulation: dies if < 2 neighbors
+                // 2. Survival: lives if == 2 or 3 neighbors
+                // 3. Overpopulation: dies if > 3 neighbors
+                // 4. Reproduction: born if exactly 3 neighbors
+                
+                let nextCell = 0; 
+                
+                if (currentCell === 1) {
+                    if (neighbors === 2 || neighbors === 3) {
+                        nextCell = 1; // Lives
+                    } else {
+                        nextCell = 0; // Dies
+                    }
+                } else {
+                    if (neighbors === 3) {
+                        nextCell = 1; // Born
+                    } else {
+                        nextCell = 0; // Stays dead
+                    }
+                }
+
+                newRow.push(nextCell);
+            }
+            nextGrid.push(newRow);
+        }
+
+        grid = nextGrid;
+        generation++;
+        updateStats();
+    }
+
+    function draw() {
+        ctx.fillStyle = '#000'; // Clear background (Black)
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        ctx.fillStyle = '#00ff88'; // Active cell color (Neon Green)
+        
+        for (let r = 0; r < rows; r++) {
+            for (let c = 0; c < cols; c++) {
+                if (grid[r][c] === 1) {
+                    // Draw slightly smaller rects to create a grid effect
+                    ctx.fillRect(c * cellSize, r * cellSize, cellSize - 1, cellSize - 1);
+                }
+            }
+        }
+    }
+
+    function loop() {
+        if (isRunning) {
+            computeNextGeneration();
+            draw();
+            animationFrameId = requestAnimationFrame(loop);
+        }
+    }
+
+    /**
+     * UI & EVENTS
+     */
+    
+    document.getElementById('btn-start').addEventListener('click', () => {
+        if (!isRunning && grid.length > 0) {
+            isRunning = true;
+            loop();
+            document.getElementById('btn-start').style.display = 'none';
+            document.getElementById('btn-stop').style.display = 'inline-block';
+        }
+    });
+
+    document.getElementById('btn-stop').addEventListener('click', () => {
+        isRunning = false;
+        cancelAnimationFrame(animationFrameId);
+        document.getElementById('btn-start').style.display = 'inline-block';
+        document.getElementById('btn-stop').style.display = 'none';
+    });
+
+    document.getElementById('btn-clear').addEventListener('click', () => {
+        isRunning = false;
+        cancelAnimationFrame(animationFrameId);
+        grid = []; // Reset logic
+        updateStats();
+        draw();
+        initGrid(); // Fill with random noise again visually, but logic reset
+        
+        // Re-draw clean state immediately before filling random again? 
+        // Actually let's just clear and fill random for visual consistency.
+    });
+
+    function toggleCell(e) {
+        if (!isRunning && canvas.width > 0) {
+            const rect = canvas.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+
+            // Find closest cell index
+            const c = Math.round(x / cellSize);
+            const r = Math.round(y / cellSize);
+
+            if (r >= 0 && r < rows && c >= 0 && c < cols) {
+                grid[r][c] = grid[r][c] ? 0 : 1; // Toggle boolean to int
+                draw();
+            }
+        }
+    }
+
+    canvas.addEventListener('mousedown', toggleCell);
+    
+    // Prevent text selection while dragging on canvas
+    canvas.addEventListener('selectstart', (e) => e.preventDefault());
+
+
+    function updateStats() {
+        let count = 0;
+        for(let r=0; r<rows; r++) {
+            for(let c=0; c<cols; c++) {
+                if(grid[r][c] === 1) count++;
+            }
+        }
+        document.getElementById('cell-count').innerText = count.toLocaleString();
+        document.getElementById('generation').innerText = generation;
+    }
+
+    // Handle Window Resize
+    window.addEventListener('resize', () => {
+        resizeCanvas();
+    });
+
+    // Initial Setup
+    resizeCanvas();
+
+</script>
+</body>
+</html>

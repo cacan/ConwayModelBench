@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Conway's Game of Life</title>
+    <style>
+        :root {
+            --bg-color: #1a1a2e;
+            --panel-bg: #16213e;
+            --accent: #0f3460;
+            --highlight: #e94560;
+            --text: #eaeaea;
+            --grid-line: rgba(255, 255, 255, 0.1);
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: var(--bg-color);
+            color: var(--text);
+            font-family: 'Courier New', Courier, monospace;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        header {
+            text-align: center;
+            padding: 15px;
+            z-index: 10;
+        }
+
+        h1 {
+            margin: 0;
+            font-size: 1.5rem;
+            letter-spacing: 2px;
+            color: var(--highlight);
+        }
+
+        p.subtitle {
+            font-size: 0.8rem;
+            opacity: 0.6;
+            margin-top: 5px;
+        }
+
+        #canvas-container {
+            flex-grow: 1;
+            width: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+        }
+
+        canvas {
+            border: 1px solid var(--grid-line);
+            background-color: #0f0f23;
+            box-shadow: 0 0 20px rgba(0,0,0,0.5);
+            cursor: crosshair;
+        }
+
+        /* Toolbar */
+        .controls {
+            padding: 15px;
+            background-color: var(--panel-bg);
+            width: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 20px;
+            border-top: 1px solid var(--grid-line);
+        }
+
+        button {
+            background-color: var(--accent);
+            color: white;
+            border: 1px solid rgba(255,255,255,0.1);
+            padding: 8px 20px;
+            font-family: inherit;
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: background 0.2s;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        button:hover {
+            background-color: var(--highlight);
+        }
+
+        button.active {
+            background-color: var(--highlight);
+            box-shadow: 0 0 10px var(--highlight);
+        }
+
+        .speed-control {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 0.8rem;
+        }
+
+        input[type=range] {
+            accent-color: var(--highlight);
+            cursor: pointer;
+        }
+
+        .generation-counter {
+            position: absolute;
+            top: 50%;
+            right: 10px;
+            transform: translateY(-50%);
+            font-size: 0.8rem;
+            background: rgba(26, 26, 46, 0.9);
+            padding: 5px 10px;
+            border-radius: 4px;
+        }
+
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>GAME OF LIFE</h1>
+        <p class="subtitle">Click on the grid to draw cells. Double-click to erase.</p>
+    </header>
+
+    <div id="canvas-container">
+        <canvas id="gridCanvas"></canvas>
+        <div class="generation-counter" id="genCounter">Gen: 0</div>
+    </div>
+
+    <div class="controls">
+        <button id="btnStart">Play</button>
+        <button id="btnClear">Clear</button>
+        <button id="btnRandom">Randomize</button>
+        
+        <div class="speed-control">
+            Speed:
+            <input type="range" id="speedSlider" min="10" max="500" value="80">
+        </div>
+
+        <button id="btnToggleErase">Draw Mode</button>
+    </div>
+
+<script>
+    // --- Configuration ---
+    const COLS = 120;
+    const ROWS = 65;
+    let CELL_SIZE = Math.min(window.innerWidth / (COLS + 2), window.innerHeight / (ROWS + 2));
+    
+    // Minimum cell size to keep performance high
+    if(CELL_SIZE < 4) CELL_SIZE = 4;
+
+    const canvas = document.getElementById('gridCanvas');
+    const ctx = canvas.getContext('2d');
+    const genCounter = document.getElementById('genCounter');
+    const speedSlider = document.getElementById('speedInterval');
+
+    // Set canvas dimensions
+    canvas.width = COLS * CELL_SIZE;
+    canvas.height = ROWS * CELL_SIZE;
+
+    // --- State Variables ---
+    let grid = [];
+    let animationId = null;
+    let isRunning = false;
+    let generation = 0;
+    let drawMode = true; // true = drawing, false = erasing
+    
+    // Colors
+    const COLOR_ALIVE = '#e94560';
+    const COLOR_DEAD = '#1a1a2e';
+
+    // --- Grid Management ---
+    function createGrid() {
+        return Array.from({ length: ROWS }, () => new Uint8Array(COLS));
+    }
+
+    function randomizeGrid() {
+        for (let r = 0; r < ROWS; r++) {
+            const row = grid[r];
+            for (let c = 0; c < COLS; c++) {
+                row[c] = Math.random() > 0.85 ? 1 : 0; // ~15% density
+            }
+        }
+    }
+
+    function clearGrid() {
+        grid = createGrid();
+        generation = 0;
+        updateCounter();
+    }
+
+    // --- Drawing ---
+    function draw() {
+        ctx.fillStyle = COLOR_DEAD;
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        for (let r = 0; r < ROWS; r++) {
+            for (let c = 0; c < COLS; c++) {
+                if (grid[r][c]) {
+                    // Draw cell with a slight padding gap for grid effect
+                    ctx.fillStyle = COLOR_ALIVE;
+                    ctx.fillRect(
+                        c * CELL_SIZE + 1, 
+                        r * CELL_SIZE + 1, 
+                        CELL_SIZE - 2, 
+                        CELL_SIZE - 2
+                    );
+                } else {
+                    // Optional: draw very faint grid lines for empty space
+                    // ctx.strokeStyle = 'rgba(255,255,255,0.03)';
+                    // ctx.strokeRect(c * CELL_SIZE, r * CELL_SIZE, CELL_SIZE, CELL_SIZE);
+                }
+            }
+        }
+
+        genCounter.textContent = `Gen: ${generation}`;
+    }
+
+    // --- Logic ---
+    function countNeighbors(grid, r, c) {
+        let sum = 0;
+        for (let i = -1; i < 2; i++) {
+            for (let j = -1; j < 2; j++) {
+                if (i === 0 && j === 0) continue; // Skip self
+
+                let row = r + i;
+                let col = c + j;
+
+                // Wrap around edges (Toroidal topology) or treat as dead?
+                // Here we wrap around for a seamless infinite feel.
+                if (row >= 0 && row < ROWS && col >= 0 && col < COLS) {
+                    sum += grid[row][col];
+                }
+            }
+        }
+        return sum;
+    }
+
+    function update() {
+        // Create a new grid based on current state
+        let nextGrid = createGrid();
+
+        for (let r = 0; r < ROWS; r++) {
+            for (let c = 0; c < COLS; c++) {
+                const neighbors = countNeighbors(grid, r, c);
+                const isAlive = grid[r][c] === 1;
+
+                // Rules of Life:
+                if (isAlive) {
+                    // Dies underpopulation (<2), survives (2-3), dies overpopulation (>3)
+                    nextGrid[r][c] = (neighbors === 2 || neighbors === 3) ? 1 : 0;
+                } else {
+                    // Dead cell with exactly 3 neighbors becomes alive (reproduction)
+                    if (neighbors === 3) {
+                        nextGrid[r][c] = 1;
+                    }
+                }
+            }
+        }
+
+        grid = nextGrid;
+        generation++;
+        updateCounter();
+    }
+
+    function gameLoop() {
+        draw();
+        if (isRunning) {
+            animationId = requestAnimationFrame(gameLoop);
+        } else {
+            // Draw one last time to catch any paused state visuals
+            draw(); 
+        }
+    }
+
+    function updateCounter() {
+        genCounter.textContent = `Gen: ${generation}`;
+    }
+
+    // --- Interaction Handlers ---
+    
+    // 1. Play/Stop Toggle
+    document.getElementById('btnStart').addEventListener('click', () => {
+        isRunning = !isRunning;
+        const btn = document.getElementById('btnStart');
+        
+        if (isRunning) {
+            btn.textContent = 'Pause';
+            btn.classList.add('active');
+            gameLoop(); // Start loop, draw immediately
+        } else {
+            btn.textContent = 'Play';
+            btn.classList.remove('active');
+        }
+    });
+
+    // 2. Clear
+    document.getElementById('btnClear').addEventListener('click', () => {
+        if (isRunning) return; // Prevent clearing while animating
+        clearGrid();
+    });
+
+    // 3. Randomize
+    document.getElementById('btnRandom').addEventListener('click', () => {
+        if (isRunning) return;
+        randomizeGrid();
+        draw();
+    });
+
+    // 4. Speed Slider
+    speedSlider.addEventListener('input', (e) => {
+        clearInterval(animationId);
+        animationId = setInterval(() => {
+            update();
+            draw();
+            if(isRunning) gameLoop();
+        }, parseInt(e.target.value));
+        
+        // Draw once immediately so we don't see a flash of empty space
+        draw();
+    });
+
+    // 5. Drawing on Canvas (Mouse Events for higher precision than touch)
+    let isMouseDown = false;
+
+    canvas.addEventListener('mousedown', (e) => {
+        if(isRunning) return;
+        isMouseDown = true;
+        handleCellClick(e);
+    });
+
+    window.addEventListener('mouseup', () => { isMouseDown = false; });
+
+    function handleCellClick(e) {
+        const rect = canvas.getBoundingClientRect();
+        const mouseX = e.clientX - rect.left;
+        const mouseY = e.clientY - rect.top;
+
+        const col = Math.floor(mouseX / CELL_SIZE);
+        const row = Math.floor(mouseY / CELL_SIZE);
+
+        if (row >= 0 && row < ROWS && col >= 0 && col < COLS) {
+            grid[row][col] = drawMode ? 1 : 0;
+            draw();
+        }
+    }
+
+    // --- Resize Handling ---
+    window.addEventListener('resize', () => {
+        CELL_SIZE = Math.min(window.innerWidth / (COLS + 2), window.innerHeight / (ROWS + 2));
+        if(CELL_SIZE < 4) CELL_SIZE = 4;
+        
+        canvas.width = COLS * CELL_SIZE;
+        canvas.height = ROWS * CELL_SIZE;
+        draw();
+    });
+
+    // --- Touch Support for Mobile ---
+    let touchStartX, touchStartY;
+    
+    canvas.addEventListener('touchstart', (e) => {
+        if(isRunning) return;
+        const rect = canvas.getBoundingClientRect();
+        const touch = e.touches[0];
+        handleCellClick({ clientX: touch.clientX - rect.left, clientY: touch.clientY - rect.top });
+        
+        // Simple double-tap erase detection (simplified for this demo: long press toggles mode)
+    }, {passive: false});
+
+    canvas.addEventListener('contextmenu', e => e.preventDefault());
+
+
+    // --- Initialization ---
+    clearGrid();
+    randomizeGrid(); // Start with some life immediately
+    draw();
+
+</script>
+</body>
+</html>

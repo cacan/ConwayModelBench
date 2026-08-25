@@ -1,0 +1,659 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Conway's Game of Life</title>
+    <style>
+        * {
+            margin: 0;
+ padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg #1a2a6c, #b21f1f);
+            color: #fff;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            background: rgba(0, 0, 0, 0.7);
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            overflow: hidden;
+        }
+        
+        header {
+            text-align: center;
+            padding: 20px;
+            background: rgba(0, 0, 0, 0.4);
+            border-bottom: 2px solid #ff6b6b;
+               }
+        
+        h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            text-shadow: 0 0 10px rgba(255, 0, 0, 0.5);
+        }
+        
+        .subtitle {
+            font-size: 1.2rem;
+            opacity: 0.8;
+        }
+        
+        .game-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+        }
+        
+        .controls {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 15px;
+            margin: 20px 0;
+            width: 100%;
+        }
+        
+        .speed-control {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 5px;
+        }
+        
+        .speed-control label {
+            font-size: 0.9rem;
+            color: #fff;
+        }
+        
+        .speed-control input[type="range"] {
+            width: 100px;
+            cursor: pointer;
+        }
+        
+        .pattern-control {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 5px;
+        }
+        
+        .pattern-control label {
+            font-size: 0.9rem;
+            color: #fff;
+        }
+        
+        .pattern-control select {
+            padding: 5px;
+            border-radius: 5px;
+            border: none;
+            background: #fff;
+            color: #000;
+        }
+        
+        .export-import {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 5px;
+        }
+        
+button {
+            padding: 12px 20px;
+            font-size: 1rem;
+            border: none;
+            border-radius: 50px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            background: linear-gradient(to right #ff6b6b, #ff8e53);
+            color: black;
+            font-weight: bold;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+        }
+        
+        button:hover {
+            transform: translateY -3px;
+            box-shadow: 0 6px 15px rgba(0, 0, 0, 0.4);
+        }
+        
+        button:active {
+            transform: translateY 1px;
+        }
+        
+        .grid-container {
+            position: relative;
+            margin: 20px auto;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 5px;
+            padding: 5px;
+        }
+        
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(30, 1fr);
+            gap: 1px;
+            width: fit-content;
+            height: fit-content;
+        }
+        
+        .cell {
+            width: 20px;
+            height: 20px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 2px;
+            transition: all 0.2s ease;
+            cursor: pointer;
+        }
+        
+        .cell:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: scale(1.1);
+        }
+        
+        .cell.live {
+            background: #ff6b6b;
+            box-shadow: 0 0 8px rgba(255, 107, 107, 0.5);
+        }
+        .cell.dead {
+            background: transparent;
+        }
+        
+        .info-panel {
+            width: 100%;
+            padding: 15px;
+            text-align: center;
+            background: rgba(0, 0, 0, 0.4);
+            border-top: 2px solid #ff6b6b;
+        }
+        
+        .info {
+            margin: 10px 0;
+            font-size: 1.1rem;
+               }
+        
+        .instructions {
+            max-width: 700px;
+            margin: 20px auto;
+            padding: 15px;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 10px;
+            line-height: 1.6;
+        }
+        .instructions h2 {
+            color: #ff6b6b;
+            margin-bottom: 10px;
+        }
+        .instructions ul {
+            padding-left: 20px;
+        }
+        .instructions li {
+            margin: 8px 0;
+        }
+        
+        @media (max-width: 768px) {
+            .grid {
+                grid-template-columns: repeat(20, 1fr);
+            }
+            .cell {
+                width: 15px;
+                height: 15px;
+            }
+        }
+        
+        @media (max-width: 480px) {
+            .grid {
+                grid-template-columns: repeat(15, 1fr);
+            }
+            .cell {
+                width: 12px;
+                height: 12px;
+            }
+            h1 {
+                font-size: 2rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Conway's Game of Life</h1>
+            <p class="subtitle">A cellular automaton simulation</p>
+        </header>
+        
+        <div class="game-container">
+            <div class="controls">
+                <button id="startBtn" aria-label="Start the simulation">Start</button>
+                <button id="stopBtn" aria-label="Stop the simulation">Stop</button>
+                <button id="resetBtn" aria-label="Reset the grid">Reset</button>
+                <button id="randomBtn" aria-label="Randomize the grid">Randomize</button>
+                <button id="stepBtn" aria-label="Advance one generation">Step</button>
+                <div class="speed-control">
+                    <label for="speedSlider">Speed: <span id="speedValue">100</span>ms</label>
+                    <input type="range" id="speedSlider" min="50" max="1000" value="100" step="50" aria-label="Adjust simulation speed">
+                </div>
+                <div class="pattern-control">
+                    <label for="patternSelect">Pattern:</label>
+                    <select id="patternSelect" aria-label="Select a pattern to load">
+                        <option value="none">None</option>
+                        <option value="glider">Glider</option>
+                        <option value="oscillator">Oscillator</option>
+                        <option value="still-life">Still Life</option>
+                    </select>
+                    <button id="loadPatternBtn" aria-label="Load selected pattern">Load</button>
+                </div>
+                <div class="export-import">
+                    <button id="exportBtn" aria-label="Export grid state">Export</button>
+                    <button id="importBtn" aria-label="Import grid state">Import</button>
+                    <input type="file" id="importFile" accept=".json" style="display: none;" aria-label="Import file">
+                </div>
+            </div>
+            
+            <div class="grid-container">
+                <div class="grid" id="grid"></div>
+            </div>
+            
+            <div class="info-panel">
+                <div class="info" id="generation-info">Generation: 0</div>
+                <div class="info" id="alive-info">Alive cells: 0</div>
+            </div>
+        </div>
+        
+        <div class="instructions">
+            <h2>How to Play:</h2>
+            <ul>
+                <li><strong>Start:</strong> Click Start to begin the simulation</li>
+                <li><strong>Stop:</strong> Click Stop to pause the simulation</li>
+                <li><strong>Reset:</strong> Click Reset to clear the grid</li>
+                <li><strong>Randomize:</strong> Click Randomize to generate random patterns</li>
+                <li><strong>Step:</strong> Click Step to advance one generation at a time</li>
+                <li><strong>Click:</strong> Click on cells to toggle them between alive and dead</li>
+            </ul>
+            <p>Rules of the Game of Life:</p>
+            <ol>
+                <li>Any live cell with fewer than two live neighbors dies (underpopulation)</li>
+                <li>Any live cell with two or three live neighbors lives on</li>
+                <li>Any live cell with more than three live neighbors dies (overpopulation)</li>
+                <li>Any dead cell with exactly three live neighbors becomes alive (reproduction)</li>
+            </ol>
+        </div>
+    </div>
+
+<script>
+        // Game of Life implementation
+        class GameOfLife {
+            constructor() {
+                this.grid = [];
+                this.width = 30;
+                this.height = 30;
+                this.running = false;
+                this.generationCount = 0;
+                this.aliveCount = 0;
+                this.intervalId = null;
+                this.speed = 100; // Default speed in ms
+                this.cellElements = []; // Cache for DOM elements
+                
+                // Initialize grid
+                this.initGrid();
+                
+                // Create DOM elements
+                this.createGrid();
+                
+                // Add event listeners
+                this.bindEvents();
+                
+                // Update info display
+                this.updateInfo();
+            }
+            
+            initGrid() {
+                // Create empty grid
+                for (let i = 0; i < this.height; i++) {
+                    this.grid[i] = [];
+                    for (let j = 0; j < this.width; j++) {
+                        this.grid[i][j] = 0;
+                    }
+                }
+            }
+            
+            createGrid() {
+                const gridElement = document.getElementById('grid');
+                gridElement.innerHTML = '';
+                this.cellElements = []; // Initialize 2D array for DOM elements
+                
+                for (let i = 0; i < this.height; i++) {
+                    this.cellElements[i] = [];
+                    for (let j = 0; j < this.width; j++) {
+                        const cell = document.createElement('div');
+                        cell.className = 'cell';
+                        cell.dataset.row = i;
+                        cell.dataset.col = j;
+                        
+                        // Add click event to toggle cell
+                        cell.addEventListener('click', () => {
+                            this.toggleCell(i, j);
+                        });
+                        
+                        gridElement.appendChild(cell);
+                        this.cellElements[i][j] = cell; // Cache the element
+                    }
+                }
+            }
+            
+            bindEvents() {
+                document.getElementById('startBtn').addEventListener('click', () => {
+                    this.start();
+                });
+                
+                document.getElementById('stopBtn').addEventListener('click', () => {
+                    this.stop();
+                });
+                
+                document.getElementById('resetBtn').addEventListener('click', () => {
+                    this.reset();
+                });
+                
+                document.getElementById('randomBtn').addEventListener('click', () => {
+                    this.randomize();
+                });
+                
+                document.getElementById('stepBtn').addEventListener('click', () => {
+                    this.step();
+                });
+                
+                // Speed control
+                const speedSlider = document.getElementById('speedSlider');
+                const speedValue = document.getElementById('speedValue');
+                speedSlider.addEventListener('input', () => {
+                    this.speed = parseInt(speedSlider.value);
+                    speedValue.textContent = this.speed;
+                    if (this.running) {
+                        this.stop();
+                        this.start();
+                    }
+                });
+                
+                // Pattern control
+                document.getElementById('loadPatternBtn').addEventListener('click', () => {
+                    const pattern = document.getElementById('patternSelect').value;
+                    this.loadPattern(pattern);
+                });
+                
+                // Export/Import control
+                document.getElementById('exportBtn').addEventListener('click', () => {
+                    this.exportGrid();
+                });
+                
+                document.getElementById('importBtn').addEventListener('click', () => {
+                    document.getElementById('importFile').click();
+                });
+                
+                document.getElementById('importFile').addEventListener('change', (e) => {
+                    this.importGrid(e);
+                });
+            }
+            
+            toggleCell(row, col) {
+                // Toggle cell state and update alive count
+                if (this.grid[row][col] === 1) {
+                    this.grid[row][col] = 0;
+                    this.aliveCount--;
+                } else {
+                    this.grid[row][col] = 1;
+                    this.aliveCount++;
+                }
+                this.updateGrid();
+                this.updateInfo();
+            }
+            
+            updateGrid() {
+                for (let i = 0; i < this.height; i++) {
+                    for (let j = 0; j < this.width; j++) {
+                        const cell = this.cellElements[i][j];
+                        
+                        if (this.grid[i][j] === 1) {
+                            cell.classList.add('live');
+                            cell.classList.remove('dead');
+                        } else {
+                            cell.classList.remove('live');
+                            cell.classList.add('dead');
+                        }
+                    }
+                }
+            }
+            
+            start() {
+                if (!this.running) {
+                    this.running = true;
+                    this.intervalId = setInterval(() => {
+                        this.step();
+                    }, this.speed);
+                }
+            }
+            
+            stop() {
+                if (this.running) {
+                    this.running = false;
+                    clearInterval(this.intervalId);
+                }
+            }
+            
+            reset() {
+                this.stop();
+                this.initGrid();
+                this.updateGrid();
+                this.generationCount = 0;
+                this.aliveCount = 0;
+                this.updateInfo();
+            }
+            
+            randomize() {
+                this.stop();
+                this.aliveCount = 0;
+                for (let i = 0; i < this.height; i++) {
+                    for (let j = 0; j < this.width; j++) {
+                        this.grid[i][j] = Math.random() > 0.5 ? 1 : 0;
+                        if (this.grid[i][j] === 1) this.aliveCount++;
+                    }
+                }
+                this.updateGrid();
+                this.updateInfo();
+            }
+            
+            step() {
+                // Create a copy of the grid for simultaneous updates
+                const newGrid = [];
+                for (let i = 0; i < this.height; i++) {
+                    newGrid[i] = [];
+                    for (let j = 0; j < this.width; j++) {
+                        newGrid[i][j] = this.grid[i][j];
+                    }
+                }
+                
+                // Track changes in alive count
+                let aliveChange = 0;
+                for (let i = 0; i < this.height; i++) {
+                    for (let j = 0; j < this.width; j++) {
+                        const neighbors = this.countNeighbors(i, j);
+                        const wasAlive = this.grid[i][j];
+                        let willBeAlive = wasAlive;
+                        
+                        // Apply rules of the game
+                        if (wasAlive === 1) {
+                            // Cell is alive
+                            if (neighbors < 2 || neighbors > 3) {
+                                willBeAlive = 0; // Dies
+                            }
+                        } else {
+                            // Cell is dead
+                            if (neighbors === 3) {
+                                willBeAlive = 1; // Becomes alive
+                            }
+                        }
+                        
+                        newGrid[i][j] = willBeAlive;
+                        if (wasAlive !== willBeAlive) {
+                            aliveChange += willBeAlive - wasAlive;
+                        }
+                    }
+                }
+                
+                // Update grid and alive count
+                this.grid = newGrid;
+                this.aliveCount += aliveChange;
+                this.updateGrid();
+                this.generationCount++;
+                this.updateInfo();
+            }
+            
+            countNeighbors(row, col) {
+                let count = 0;
+                
+                // Check all 8 surrounding cells
+                for (let i = -1; i <= 1; i++) {
+                    for (let j = -1; j <= 1; j++) {
+                        if (i === 0 && j === 0) continue; // Skip center cell
+                        
+                        const newRow = row + i;
+                        const newCol = col + j;
+                        
+                        // Check if neighbor is within bounds
+                        if (newRow >= 0 && newRow < this.height && 
+                            newCol >= 0 && newCol < this.width) {
+                            count += this.grid[newRow][newCol];
+                        }
+                    }
+                }
+                
+                return count;
+            }
+            
+            updateInfo() {
+                document.getElementById('generation-info').textContent = `Generation: ${this.generationCount}`;
+                document.getElementById('alive-info').textContent = `Alive cells: ${this.aliveCount}`;
+            }
+            
+            loadPattern(pattern) {
+                this.stop();
+                this.initGrid();
+                this.aliveCount = 0;
+                let patternCells = [];
+                
+                try {
+                    switch (pattern) {
+                        case 'glider':
+                            // Glider pattern
+                            patternCells = [
+                                [1, 0], [2, 1], [0, 2], [1, 2], [2, 2]
+                            ];
+                            break;
+                        case 'oscillator':
+                            // Blinker oscillator
+                            patternCells = [
+                                [1, 0], [1, 1], [1, 2]
+                            ];
+                            break;
+                        case 'still-life':
+                            // Block still life
+                            patternCells = [
+                                [0, 0], [0, 1], [1, 0], [1, 1]
+                            ];
+                            break;
+                        default:
+                            console.warn(`Unknown pattern: ${pattern}`);
+                            this.updateGrid();
+                            this.updateInfo();
+                            return;
+                    }
+                    
+                    // Place pattern in the center
+                    const offsetX = Math.floor(this.width / 2) - 1;
+                    const offsetY = Math.floor(this.height / 2) - 1;
+                    
+                    patternCells.forEach(([x, y]) => {
+                        const gridX = offsetX + x;
+                        const gridY = offsetY + y;
+                        if (gridX >= 0 && gridX < this.width && gridY >= 0 && gridY < this.height) {
+                            this.grid[gridY][gridX] = 1;
+                            this.aliveCount++;
+                        }
+                    });
+                    
+                    this.updateGrid();
+                    this.updateInfo();
+                } catch (error) {
+                    console.error(`Error loading pattern ${pattern}:`, error);
+                    alert(`Failed to load pattern: ${pattern}`);
+                }
+            }
+            
+            exportGrid() {
+                const data = {
+                    grid: this.grid,
+                    width: this.width,
+                    height: this.height,
+                    generation: this.generationCount,
+                    aliveCount: this.aliveCount
+                };
+                const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `game-of-life-${Date.now()}.json`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+            }
+            
+            importGrid(event) {
+                const file = event.target.files[0];
+                if (!file) return;
+                
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    try {
+                        const data = JSON.parse(e.target.result);
+                        if (data.grid && data.width && data.height) {
+                            this.grid = data.grid;
+                            this.width = data.width;
+                            this.height = data.height;
+                            this.generationCount = data.generation || 0;
+                            this.aliveCount = data.aliveCount || 0;
+                            this.updateGrid();
+                            this.updateInfo();
+                            // Reset file input
+                            event.target.value = '';
+                        } else {
+                            throw new Error('Invalid file format');
+                        }
+                    } catch (error) {
+                        console.error('Error importing grid:', error);
+                        alert('Failed to import grid. Please check the file format.');
+                    }
+                };
+                reader.readAsText(file);
+            }
+        }
+        
+        // Initialize game
+        const game = new GameOfLife();
+        
+        // Add keyboard controls
+        document.addEventListener('keydown', (e) => {
+            if (e.key === ' ') {
+                e.preventDefault();
+                game.step();
+            }
+        });
+    </script>
+</body>
+</html>

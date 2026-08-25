@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CyberLife // Simulation</title>
+    
+    <!-- Import Sci-Fi Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Rajdhani:wght@300;500;700&display=swap" rel="stylesheet">
+
+    <style>
+        :root {
+            --bg-deep: #050b14;
+            --grid-bg: rgba(20, 30, 48, 0.6);
+            --neon-cyan: #00f3ff;
+            --neon-purple: #bc13fe;
+            --glass-border: rgba(255, 255, 255, 0.1);
+            --text-main: #e0f7fa;
+        }
+
+        * { box-sizing: border-box; user-select: none; }
+
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: var(--bg-deep);
+            /* Cool radial gradient background */
+            background-image: 
+                radial-gradient(circle at 50% 50%, #1a2c4e 0%, #050b14 80%),
+                linear-gradient(rgba(0, 243, 255, 0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0, 243, 255, 0.03) 1px, transparent 1px);
+            background-size: 100% 100%, 40px 40px, 40px 40px;
+            
+            color: var(--text-main);
+            font-family: 'Rajdhani', sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            overflow: hidden; /* Prevent scrollbars */
+        }
+
+        /* --- Header & HUD --- */
+        header {
+            text-align: center;
+            margin-bottom: 20px;
+            z-index: 10;
+        }
+
+        h1 {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 3rem;
+            margin: 0;
+            letter-spacing: 4px;
+            text-transform: uppercase;
+            background: linear-gradient(90deg, var(--neon-cyan), #fff);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            filter: drop-shadow(0 0 10px rgba(0, 243, 255, 0.5));
+        }
+
+        .hud-stats {
+            display: flex;
+            gap: 40px;
+            margin-top: 10px;
+            font-size: 1.2rem;
+            color: rgba(255,255,255,0.7);
+        }
+
+        .stat-value {
+            color: var(--neon-cyan);
+            font-weight: bold;
+            text-shadow: 0 0 8px var(--neon-cyan);
+        }
+
+        /* --- The Grid Container (Hologram Effect) --- */
+        .grid-wrapper {
+            position: relative;
+            padding: 10px;
+            background: rgba(0, 243, 255, 0.05);
+            border-radius: 8px;
+            box-shadow: 
+                inset 0 0 20px rgba(0, 243, 255, 0.1),
+                0 0 30px rgba(0, 0, 0, 0.5);
+            border: 1px solid var(--glass-border);
+        }
+
+        /* Decorative corners for the grid */
+        .grid-wrapper::before, .grid-wrapper::after {
+            content: '';
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            border: 2px solid var(--neon-cyan);
+            transition: all 0.3s ease;
+        }
+        .grid-wrapper::before { top: -2px; left: -2px; border-right: none; border-bottom: none; }
+        .grid-wrapper::after { bottom: -2px; right: -2px; border-left: none; border-top: none; }
+
+        .grid-container {
+            display: grid;
+            gap: 1px; /* Tiny gap for the circuit board look */
+            background-color: rgba(0,0,0,0.8);
+        }
+
+        /* --- Individual Cells --- */
+        .cell {
+            width: 14px;
+            height: 14px;
+            background-color: transparent;
+            border-radius: 1px;
+            transition: all 0.2s ease-in-out;
+            cursor: crosshair;
+        }
+
+        /* Hover effect for dead cells */
+        .cell:hover {
+            background-color: rgba(255, 255, 255, 0.1);
+        }
+
+        /* Alive State - The "Wow" Factor */
+        .cell.alive {
+            background-color: var(--neon-cyan);
+            box-shadow: 0 0 8px var(--neon-cyan), inset 0 0 4px #fff;
+            transform: scale(1.1); /* Slight pop */
+            z-index: 2;
+        }
+
+        /* --- Controls (Glassmorphism) --- */
+        .controls {
+            margin-top: 30px;
+            display: flex;
+            gap: 15px;
+            padding: 15px 30px;
+            
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border-radius: 50px;
+            border: 1px solid var(--glass-border);
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+        }
+
+        button {
+            padding: 12px 24px;
+            font-family: 'Orbitron', sans-serif;
+            font-size: 0.9rem;
+            letter-spacing: 1px;
+            color: var(--bg-deep);
+            background: linear-gradient(135deg, var(--neon-cyan), #00a8b0);
+            border: none;
+            border-radius: 25px;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            overflow: hidden;
+        }
+
+        button::after {
+            content: '';
+            position: absolute;
+            top: 0; left: -100%;
+            width: 100%; height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);
+            transition: 0.5s;
+        }
+
+        button:hover {
+            transform: translateY(-2px) scale(1.05);
+            box-shadow: 0 0 20px rgba(0, 243, 255, 0.6);
+        }
+
+        button:hover::after {
+            left: 100%;
+        }
+
+        button.secondary {
+            background: transparent;
+            color: var(--neon-cyan);
+            border: 1px solid var(--neon-cyan);
+        }
+        
+        button.secondary:hover {
+            background: rgba(0, 243, 255, 0.1);
+            box-shadow: 0 0 15px rgba(0, 243, 255, 0.3);
+        }
+
+        button.danger {
+            background: linear-gradient(135deg, #ff4b1f, #ff9068);
+            color: white;
+        }
+        
+        button.danger:hover {
+             box-shadow: 0 0 20px rgba(255, 75, 31, 0.6);
+        }
+
+        /* Responsive adjustments */
+        @media (max-width: 800px) {
+            .grid-container { transform: scale(0.8); }
+            h1 { font-size: 2rem; }
+            .controls { flex-wrap: wrap; justify-content: center; }
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>CyberLife</h1>
+        <div class="hud-stats">
+            <span>Gens: <span id="genCount" class="stat-value">0</span></span>
+            <span>Pop: <span id="popCount" class="stat-value">0</span></span>
+        </div>
+    </header>
+
+    <div class="grid-wrapper">
+        <div id="grid" class="grid-container"></div>
+    </div>
+
+    <div class="controls">
+        <button id="startBtn" onclick="toggleGame()">INITIALIZE</button>
+        <button class="secondary" onclick="randomizeGrid()">RANDOMIZE</button>
+        <button class="danger" onclick="clearGrid()">PURGE</button>
+    </div>
+
+    <script>
+        // Configuration
+        const rows = 35;
+        const cols = 50;
+        let grid = [];
+        let isRunning = false;
+        let intervalId = null;
+        let generation = 0;
+        
+        const gridElement = document.getElementById('grid');
+        const startBtn = document.getElementById('startBtn');
+        const genDisplay = document.getElementById('genCount');
+        const popDisplay = document.getElementById('popCount');
+
+        // Initialize the Grid
+        function initGrid() {
+            gridElement.innerHTML = '';
+            gridElement.style.gridTemplateColumns = `repeat(${cols}, 1fr)`;
+            
+            for (let r = 0; r < rows; r++) {
+                let row = [];
+                for (let c = 0; c < cols; c++) {
+                    const cellDiv = document.createElement('div');
+                    cellDiv.classList.add('cell');
+                    
+                    // Interaction: Click to toggle
+                    cellDiv.addEventListener('mousedown', () => {
+                        if(!isRunning) {
+                            row[c] = row[c] ? 0 : 1;
+                            updateCellVisual(cellDiv, row[c]);
+                            draw(); // Redraw stats immediately
+                        }
+                    });
+
+                    gridElement.appendChild(cellDiv);
+                    row.push(0); 
+                }
+                grid.push(row);
+            }
+        }
+
+        function updateCellVisual(element, state) {
+            if (state === 1) element.classList.add('alive');
+            else element.classList.remove('alive');
+        }
+
+        // Core Game Logic
+        function nextGen() {
+            let nextGrid = grid.map(arr => [...arr]); 
+            let population = 0;
+
+            for (let r = 0; r < rows; r++) {
+                for (let c = 0; c < cols; c++) {
+                    const state = grid[r][c];
+                    const neighbors = countNeighbors(grid, r, c);
+
+                    if (state === 0 && neighbors === 3) {
+                        nextGrid[r][c] = 1; 
+                    } else if (state === 1 && (neighbors < 2 || neighbors > 3)) {
+                        nextGrid[r][c] = 0; 
+                    } else {
+                        nextGrid[r][c] = state; 
+                    }
+                    
+                    if(nextGrid[r][c] === 1) population++;
+                }
+            }
+
+            grid = nextGrid;
+            generation++;
+            
+            // Update HUD
+            genDisplay.innerText = generation;
+            popDisplay.innerText = population;
+            
+            draw();
+        }
+
+        function countNeighbors(grid, r, c) {
+            let sum = 0;
+            for (let i = -1; i < 2; i++) {
+                for (let j = -1; j < 2; j++) {
+                    // Wrap around edges (Toroidal array)
+                    let x = (r + i + rows) % rows;
+                    let y = (c + j + cols) % cols;
+                    sum += grid[x][y];
+                }
+            }
+            sum -= grid[r][c]; 
+            return sum;
+        }
+
+        function draw() {
+            const cells = document.querySelectorAll('.cell');
+            let index = 0;
+            for (let r = 0; r < rows; r++) {
+                for (let c = 0; c < cols; c++) {
+                    updateCellVisual(cells[index], grid[r][c]);
+                    index++;
+                }
+            }
+        }
+
+        // Controls
+        function toggleGame() {
+            if (isRunning) {
+                clearInterval(intervalId);
+                startBtn.textContent = "RESUME";
+                startBtn.style.background = "linear-gradient(135deg, var(--neon-cyan), #00a8b0)";
+                isRunning = false;
+            } else {
+                intervalId = setInterval(nextGen, 80); // Speed: 80ms
+                startBtn.textContent = "PAUSE";
+                startBtn.classList.add('danger'); // Turn red when running
+                
+                // Change gradient to danger colors via JS for simplicity here
+                startBtn.style.background = "linear-gradient(135deg, #ff4b1f, #ff9068)"; 
+                
+                isRunning = true;
+            }
+        }
+
+        function randomizeGrid() {
+            if(isRunning) toggleGame(); // Stop first to prevent chaos
+            generation = 0;
+            genDisplay.innerText = 0;
+            
+            for (let r = 0; r < rows; r++) {
+                for (let c = 0; c < cols; c++) {
+                    grid[r][c] = Math.random() > 0.75 ? 1 : 0; 
+                }
+            }
+            draw();
+        }
+
+        function clearGrid() {
+            if(isRunning) toggleGame();
+            generation = 0;
+            genDisplay.innerText = 0;
+            
+            for (let r = 0; r < rows; r++) {
+                for (let c = 0; c < cols; c++) {
+                    grid[r][c] = 0;
+                }
+            }
+            draw();
+        }
+
+        // Start up
+        initGrid();
+        randomizeGrid(); 
+        
+    </script>
+</body>
+</html>

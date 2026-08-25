@@ -1,0 +1,1237 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ConwayModelBench — Report</title>
+<style>
+  :root {
+    --bg: #0b0f17;
+    --panel: #131a26;
+    --panel-2: #1a2333;
+    --text: #e6edf6;
+    --muted: #8b96a8;
+    --accent: #00f3ff;
+    --accent-2: #bc13fe;
+    --border: rgba(255,255,255,0.08);
+    --ok: #00f3ff;
+    --warn: #ffb454;
+    --bad: #ff4d6d;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    line-height: 1.5;
+  }
+  header {
+    padding: 40px 24px 24px;
+    text-align: center;
+    background: linear-gradient(180deg, #131a26 0%, var(--bg) 100%);
+    border-bottom: 1px solid var(--border);
+  }
+  h1 {
+    font-size: 2.4rem;
+    margin: 0 0 8px;
+    background: linear-gradient(90deg, var(--accent), var(--accent-2));
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    letter-spacing: -1px;
+  }
+  header p { margin: 0; color: var(--muted); }
+  .stats {
+    display: flex;
+    gap: 16px;
+    justify-content: center;
+    flex-wrap: wrap;
+    margin-top: 24px;
+  }
+  .stat {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    padding: 8px 16px;
+    border-radius: 8px;
+    font-size: 0.9rem;
+  }
+  .stat b { color: var(--accent); font-size: 1.1rem; margin-right: 4px; }
+  .toolbar {
+    max-width: 1400px;
+    margin: 24px auto;
+    padding: 0 24px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    align-items: center;
+  }
+  input[type="search"] {
+    flex: 1;
+    min-width: 220px;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 10px 14px;
+    border-radius: 8px;
+    font-size: 1rem;
+  }
+  input[type="search"]:focus { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .filters { display: flex; gap: 8px; flex-wrap: wrap; }
+  .tag-btn {
+    background: var(--panel);
+    color: var(--muted);
+    border: 1px solid var(--border);
+    padding: 6px 12px;
+    border-radius: 999px;
+    cursor: pointer;
+    font-size: 0.85rem;
+    transition: all 0.15s;
+  }
+  .tag-btn:hover { color: var(--text); border-color: var(--accent); }
+  .tag-btn.active { background: var(--accent); color: var(--bg); border-color: var(--accent); }
+  .grid {
+    max-width: 1400px;
+    margin: 0 auto 60px;
+    padding: 0 24px;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 18px;
+  }
+  .card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+    transition: transform 0.15s, border-color 0.15s;
+  }
+  .card:hover { transform: translateY(-2px); border-color: var(--accent); }
+  .card.hidden { display: none; }
+  .thumb {
+    aspect-ratio: 16 / 10;
+    background: #000;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .thumb img { width: 100%; height: 100%; object-fit: cover; object-position: top; display: block; }
+  .no-shot { color: var(--muted); font-size: 0.9rem; padding: 24px; }
+  .body { padding: 14px; }
+  h3 {
+    font-size: 0.95rem;
+    margin: 0 0 8px;
+    color: var(--text);
+    word-break: break-word;
+  }
+  .meta {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    align-items: center;
+    margin-bottom: 8px;
+  }
+  .arch {
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 1px;
+    padding: 2px 8px;
+    border-radius: 4px;
+    background: var(--panel-2);
+    color: var(--muted);
+  }
+  .arch-canvas { background: rgba(0, 243, 255, 0.15); color: var(--ok); }
+  .arch-3d { background: rgba(188, 19, 254, 0.15); color: var(--accent-2); }
+  .arch-dom { background: rgba(255, 180, 84, 0.15); color: var(--warn); }
+  .arch-svg { background: rgba(255, 77, 109, 0.15); color: var(--bad); }
+  .tag {
+    font-size: 0.7rem;
+    color: var(--muted);
+    background: var(--panel-2);
+    padding: 2px 6px;
+    border-radius: 4px;
+  }
+  .badges { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 10px; }
+  .badge {
+    font-size: 0.7rem;
+    padding: 2px 8px;
+    border-radius: 999px;
+    background: var(--panel-2);
+    color: var(--muted);
+    border: 1px solid var(--border);
+  }
+  .badge.ok { color: var(--ok); border-color: rgba(0,243,255,0.3); background: rgba(0,243,255,0.08); }
+  .stats { font-size: 0.75rem; color: var(--muted); display: flex; gap: 12px; }
+  .stats b { color: var(--text); font-weight: 600; }
+  footer {
+    text-align: center;
+    color: var(--muted);
+    padding: 40px 24px;
+    border-top: 1px solid var(--border);
+    font-size: 0.85rem;
+  }
+  footer a { color: var(--accent); }
+</style>
+</head>
+<body>
+<header>
+  <h1>ConwayModelBench</h1>
+  <p>59 LLMs from LM Studio · same prompt · different architectures</p>
+  <div class="stats">
+    <div class="stat"><b>59</b>models</div>
+    <div class="stat"><b>59</b>screenshots</div>
+    <div class="stat"><b>31</b>canvas</div>
+    <div class="stat"><b>13</b>3D</div>
+    <div class="stat"><b>30</b>toroidal</div>
+    <div class="stat"><b>2</b>audio</div>
+  </div>
+</header>
+
+<div class="toolbar">
+  <input type="search" id="search" placeholder="Filter by model name…" autocomplete="off">
+  <div class="filters" id="filters">
+    <button class="tag-btn active" data-tag="__all">all</button>
+    <button class="tag-btn" data-tag="3d">3d</button><button class="tag-btn" data-tag="devstral">devstral</button><button class="tag-btn" data-tag="distill">distill</button><button class="tag-btn" data-tag="experimental">experimental</button><button class="tag-btn" data-tag="gemini">gemini</button><button class="tag-btn" data-tag="gemma">gemma</button><button class="tag-btn" data-tag="glm">glm</button><button class="tag-btn" data-tag="historical">historical</button><button class="tag-btn" data-tag="kat">kat</button><button class="tag-btn" data-tag="lfm">lfm</button><button class="tag-btn" data-tag="moe">moe</button><button class="tag-btn" data-tag="nvidia">nvidia</button><button class="tag-btn" data-tag="orinth">orinth</button><button class="tag-btn" data-tag="qwen">qwen</button><button class="tag-btn" data-tag="small">small</button><button class="tag-btn" data-tag="svg">svg</button><button class="tag-btn" data-tag="taalas">taalas</button><button class="tag-btn" data-tag="ui">ui</button>
+  </div>
+</div>
+
+<main class="grid" id="grid">
+
+        <article class="card" data-name="2gb-with-guide" data-size="11618" data-patterns="2" data-arch="dom">
+            <div class="thumb"><a href="outputs/2gb-with-guide.html"><img src="screenshots/2gb-with-guide.png" alt="2GB-with-guide" loading="lazy"></a></div>
+            <div class="body">
+                <h3>2GB-with-guide</h3>
+                <div class="meta">
+                    <span class="arch arch-dom">DOM</span>
+                    <span class="tag">historical</span>
+                </div>
+                <div class="badges"><span class="badge ok">responsive</span> <span class="badge">2 patterns</span></div>
+                <div class="stats">
+                    <span><b>11.3KB</b> · 358L</span>
+                    
+                    
+                </div>
+            </div>
+        </article>
+
+        <article class="card" data-name="2gb" data-size="5812" data-patterns="0" data-arch="canvas">
+            <div class="thumb"><a href="outputs/2gb.html"><img src="screenshots/2gb.png" alt="2GB" loading="lazy"></a></div>
+            <div class="body">
+                <h3>2GB</h3>
+                <div class="meta">
+                    <span class="arch arch-canvas">Canvas</span>
+                    <span class="tag">historical</span>
+                </div>
+                <div class="badges"></div>
+                <div class="stats">
+                    <span><b>5.7KB</b> · 187L</span>
+                    
+                    
+                </div>
+            </div>
+        </article>
+
+        <article class="card" data-name="2gb_qwen3-glm-distill" data-size="33553" data-patterns="5" data-arch="svg">
+            <div class="thumb"><a href="outputs/2gb-qwen3-glm-distill.html"><img src="screenshots/2gb-qwen3-glm-distill.png" alt="2GB_qwen3-glm-distill" loading="lazy"></a></div>
+            <div class="body">
+                <h3>2GB_qwen3-glm-distill</h3>
+                <div class="meta">
+                    <span class="arch arch-svg">SVG</span>
+                    <span class="tag">historical</span>
+                </div>
+                <div class="badges"><span class="badge ok">responsive</span> <span class="badge ok">5 patterns</span></div>
+                <div class="stats">
+                    <span><b>32.8KB</b> · 918L</span>
+                    
+                    
+                </div>
+            </div>
+        </article>
+
+        <article class="card" data-name="devstral 24b instruct 2512" data-size="9525" data-patterns="1" data-arch="canvas">
+            <div class="thumb"><a href="outputs/devstral-24b-instruct-2512.html"><img src="screenshots/devstral-24b-instruct-2512.png" alt="Devstral 24B Instruct 2512" loading="lazy"></a></div>
+            <div class="body">
+                <h3>Devstral 24B Instruct 2512</h3>
+                <div class="meta">
+                    <span class="arch arch-canvas">Canvas</span>
+                    <span class="tag">devstral</span>
+                </div>
+                <div class="badges"><span class="badge">1 pattern</span></div>
+                <div class="stats">
+                    <span><b>9.3KB</b> · 280L</span>
+                    
+                    
+                </div>
+            </div>
+        </article>
+
+        <article class="card" data-name="devstral small 2 24b instruct 2512" data-size="7071" data-patterns="0" data-arch="canvas">
+            <div class="thumb"><a href="outputs/devstral-small-2-24b-instruct-2512.html"><img src="screenshots/devstral-small-2-24b-instruct-2512.png" alt="Devstral Small 2 24B Instruct 2512" loading="lazy"></a></div>
+            <div class="body">
+                <h3>Devstral Small 2 24B Instruct 2512</h3>
+                <div class="meta">
+                    <span class="arch arch-canvas">Canvas</span>
+                    <span class="tag">devstral</span>
+                </div>
+                <div class="badges"></div>
+                <div class="stats">
+                    <span><b>6.9KB</b> · 217L</span>
+                    
+                    
+                </div>
+            </div>
+        </article>
+
+        <article class="card" data-name="devstral small 2 24b instruct 2512 wow" data-size="23033" data-patterns="1" data-arch="canvas">
+            <div class="thumb"><a href="outputs/devstral-small-2-24b-instruct-2512-wow.html"><img src="screenshots/devstral-small-2-24b-instruct-2512-wow.png" alt="Devstral Small 2 24B Instruct 2512 Wow" loading="lazy"></a></div>
+            <div class="body">
+                <h3>Devstral Small 2 24B Instruct 2512 Wow</h3>
+                <div class="meta">
+                    <span class="arch arch-canvas">Canvas</span>
+                    <span class="tag">devstral</span>
+                </div>
+                <div class="badges"><span class="badge ok">drag-paint</span> <span class="badge">particles</span> <span class="badge ok">responsive</span> <span class="badge">1 pattern</span></div>
+                <div class="stats">
+                    <span><b>22.5KB</b> · 661L</span>
+                    
+                    
+                </div>
+            </div>
+        </article>
+
+        <article class="card" data-name="gemini 3.0 preview 3d" data-size="25143" data-patterns="2" data-arch="3d">
+            <div class="thumb"><a href="outputs/gemini-30-preview-3d.html"><img src="screenshots/gemini-30-preview-3d.png" alt="Gemini 3.0 Preview 3D" loading="lazy"></a></div>
+            <div class="body">
+                <h3>Gemini 3.0 Preview 3D</h3>
+                <div class="meta">
+                    <span class="arch arch-3d">3D</span>
+                    <span class="tag">gemini</span><span class="tag">3d</span>
+                </div>
+                <div class="badges"><span class="badge ok">toroidal</span> <span class="badge ok">audio</span> <span class="badge">2 patterns</span></div>
+                <div class="stats">
+                    <span><b>24.6KB</b> · 618L</span>
+                    
+                    
+                </div>
+            </div>
+        </article>
+
+        <article class="card" data-name="gemini 3.0 preview improved" data-size="21443" data-patterns="9" data-arch="canvas">
+            <div class="thumb"><a href="outputs/gemini-30-preview-improved.html"><img src="screenshots/gemini-30-preview-improved.png" alt="Gemini 3.0 Preview Improved" loading="lazy"></a></div>
+            <div class="body">
+                <h3>Gemini 3.0 Preview Improved</h3>
+                <div class="meta">
+                    <span class="arch arch-canvas">Canvas</span>
+                    <span class="tag">gemini</span>
+                </div>
+                <div class="badges"><span class="badge ok">toroidal</span> <span class="badge">glow</span> <span class="badge ok">9 patterns</span></div>
+                <div class="stats">
+                    <span><b>20.9KB</b> · 627L</span>
+                    
+                    
+                </div>
+            </div>
+        </article>
+
+        <article class="card" data-name="gemini 3.0 preview improved v2" data-size="26531" data-patterns="8" data-arch="canvas">
+            <div class="thumb"><a href="outputs/gemini-30-preview-improved-v2.html"><img src="screenshots/gemini-30-preview-improved-v2.png" alt="Gemini 3.0 Preview Improved v2" loading="lazy"></a></div>
+            <div class="body">
+                <h3>Gemini 3.0 Preview Improved v2</h3>
+                <div class="meta">
+                    <span class="arch arch-canvas">Canvas</span>
+                    <span class="tag">gemini</span>
+                </div>
+                <div class="badges"><span class="badge ok">toroidal</span> <span class="badge ok">audio</span> <span class="badge">glow</span> <span class="badge">toast</span> <span class="badge ok">8 patterns</span></div>
+                <div class="stats">
+                    <span><b>25.9KB</b> · 692L</span>
+                    
+                    
+                </div>
+            </div>
+        </article>
+
+        <article class="card" data-name="geminie 3.0 preview" data-size="8490" data-patterns="0" data-arch="canvas">
+            <div class="thumb"><a href="outputs/geminie-30-preview.html"><img src="screenshots/geminie-30-preview.png" alt="Geminie 3.0 Preview" loading="lazy"></a></div>
+            <div class="body">
+                <h3>Geminie 3.0 Preview</h3>
+                <div class="meta">
+                    <span class="arch arch-canvas">Canvas</span>
+                    <span class="tag">gemini</span>
+                </div>
+                <div class="badges"><span class="badge ok">drag-paint</span></div>
+                <div class="stats">
+                    <span><b>8.3KB</b> · 278L</span>
+                    
+                    
+                </div>
+            </div>
+        </article>
+
+        <article class="card" data-name="gemma 4 24b a4" data-size="8079" data-patterns="0" data-arch="canvas">
+            <div class="thumb"><a href="outputs/gemma-4-24b-a4.html"><img src="screenshots/gemma-4-24b-a4.png" alt="Gemma 4 24B A4" loading="lazy"></a></div>
+            <div class="body">
+                <h3>Gemma 4 24B A4</h3>
+                <div class="meta">
+                    <span class="arch arch-canvas">Canvas</span>
+                    <span class="tag">gemma</span>
+                </div>
+                <div class="badges"><span class="badge ok">toroidal</span></div>
+                <div class="stats">
+                    <span><b>7.9KB</b> · 261L</span>
+                    
+                    
+                </div>
+            </div>
+        </article>
+
+        <article class="card" data-name="gemma 4 24b a4 ui" data-size="12248" data-patterns="0" data-arch="canvas">
+            <div class="thumb"><a href="outputs/gemma-4-24b-a4-ui.html"><img src="screenshots/gemma-4-24b-a4-ui.png" alt="Gemma 4 24B A4 UI" loading="lazy"></a></div>
+            <div class="body">
+                <h3>Gemma 4 24B A4 UI</h3>
+                <div class="meta">
+                    <span class="arch arch-canvas">Canvas</span>
+                    <span class="tag">gemma</span><span class="tag">ui</span>
+                </div>
+                <div class="badges"><span class="badge ok">toroidal</span> <span class="badge">glow</span></div>
+                <div class="stats">
+                    <span><b>12.0KB</b> · 378L</span>
+                    
+                    
+                </div>
+            </div>
+        </article>
+
+        <article class="card" data-name="glm 4.7 flash improved v2" data-size="24216" data-patterns="5" data-arch="canvas">
+            <div class="thumb"><a href="outputs/glm-47-flash-improved-v2.html"><img src="screenshots/glm-47-flash-improved-v2.png" alt="GLM 4.7 Flash Improved v2" loading="lazy"></a></div>
+            <div class="body">
+                <h3>GLM 4.7 Flash Improved v2</h3>
+                <div class="meta">
+                    <span class="arch arch-canvas">Canvas</span>
+                    <span class="tag">glm</span>
+                </div>
+                <div class="badges"><span class="badge ok">toroidal</span> <span class="badge ok">drag-paint</span> <span class="badge ok">touch</span> <span class="badge">glow</span> <span class="badge">toast</span> <span class="badge ok">responsive</span> <span class="badge ok">5 patterns</span></div>
+                <div class="stats">
+                    <span><b>23.6KB</b> · 724L</span>
+                    
+                    
+                </div>
+            </div>
+        </article>
+
+        <article class="card" data-name="glm 4.7 flash" data-size="23797" data-patterns="5" data-arch="canvas">
+            <div class="thumb"><a href="outputs/glm-47-flash.html"><img src="screenshots/glm-47-flash.png" alt="GLM 4.7 Flash" loading="lazy"></a></div>
+            <div class="body">
+                <h3>GLM 4.7 Flash</h3>
+                <div class="meta">
+                    <span class="arch arch-canvas">Canvas</span>
+                    <span class="tag">glm</span>
+                </div>
+                <div class="badges"><span class="badge ok">toroidal</span> <span class="badge ok">drag-paint</span> <span class="badge ok">touch</span> <span class="badge">glow</span> <span class="badge">toast</span> <span class="badge ok">responsive</span> <span class="badge ok">5 patterns</span></div>
+                <div class="stats">
+                    <span><b>23.2KB</b> · 726L</span>
+                    
+                    
+                </div>
+            </div>
+        </article>
+
+        <article class="card" data-name="glm 4.7 flash 3d" data-size="20031" data-patterns="1" data-arch="3d">
+            <div class="thumb"><a href="outputs/glm-47-flash-3d.html"><img src="screenshots/glm-47-flash-3d.png" alt="GLM 4.7 Flash 3D" loading="lazy"></a></div>
+            <div class="body">
+                <h3>GLM 4.7 Flash 3D</h3>
+                <div class="meta">
+                    <span class="arch arch-3d">3D</span>
+                    <span class="tag">glm</span><span class="tag">3d</span>
+                </div>
+                <div class="badges"><span class="badge ok">toroidal</span> <span class="badge ok">drag-paint</span> <span class="badge">glow</span> <span class="badge">1 pattern</span></div>
+                <div class="stats">
+                    <span><b>19.6KB</b> · 580L</span>
+                    
+                    
+                </div>
+            </div>
+        </article>
+
+        <article class="card" data-name="glm" data-size="17844" data-patterns="4" data-arch="dom">
+            <div class="thumb"><a href="outputs/glm.html"><img src="screenshots/glm.png" alt="GLM" loading="lazy"></a></div>
+            <div class="body">
+                <h3>GLM</h3>
+                <div class="meta">
+                    <span class="arch arch-dom">DOM</span>
+                    <span class="tag">historical</span>
+                </div>
+                <div class="badges"><span class="badge ok">responsive</span> <span class="badge ok">4 patterns</span></div>
+                <div class="stats">
+                    <span><b>17.4KB</b> · 554L</span>
+                    
+                    
+                </div>
+            </div>
+        </article>
+
+        <article class="card" data-name="kat coder 2.5 dev" data-size="18881" data-patterns="6" data-arch="canvas">
+            <div class="thumb"><a href="outputs/kat-coder-25-dev.html"><img src="screenshots/kat-coder-25-dev.png" alt="Kat Coder 2.5 Dev" loading="lazy"></a></div>
+            <div class="body">
+                <h3>Kat Coder 2.5 Dev</h3>
+                <div class="meta">
+                    <span class="arch arch-canvas">Canvas</span>
+                    <span class="tag">kat</span>
+                </div>
+                <div class="badges"><span class="badge ok">keyboard</span> <span class="badge ok">drag-paint</span> <span class="badge">glow</span> <span class="badge ok">6 patterns</span></div>
+                <div class="stats">
+                    <span><b>18.4KB</b> · 567L</span>
+                    
+                    
+                </div>
+            </div>
+        </article>
+
+        <article class="card" data-name="lfm 2.5 1.2" data-size="6871" data-patterns="0" data-arch="dom">
+            <div class="thumb"><a href="outputs/lfm-2-5-1-2.html"><img src="screenshots/lfm-2-5-1-2.png" alt="LFM 2.5 1.2" loading="lazy"></a></div>
+            <div class="body">
+                <h3>LFM 2.5 1.2</h3>
+                <div class="meta">
+                    <span class="arch arch-dom">DOM</span>
+                    <span class="tag">lfm</span>
+                </div>
+                <div class="badges"></div>
+                <div class="stats">
+                    <span><b>6.7KB</b> · 222L</span>
+                    
+                    
+                </div>
+            </div>
+        </article>
+
+        <article class="card" data-name="nemotron 3 nano" data-size="10793" data-patterns="2" data-arch="3d">
+            <div class="thumb"><a href="outputs/nemotron-3-nano.html"><img src="screenshots/nemotron-3-nano.png" alt="Nemotron 3 Nano" loading="lazy"></a></div>
+            <div class="body">
+                <h3>Nemotron 3 Nano</h3>
+                <div class="meta">
+                    <span class="arch arch-3d">3D</span>
+                    <span class="tag">nvidia</span><span class="tag">small</span><span class="tag">historical</span>
+                </div>
+                <div class="badges"><span class="badge ok">toroidal</span> <span class="badge">2 patterns</span></div>
+                <div class="stats">
+                    <span><b>10.5KB</b> · 327L</span>
+                    
+                    
+                </div>
+            </div>
+        </article>
+
+        <article class="card" data-name="orinth 1.0 95" data-size="11448" data-patterns="0" data-arch="canvas">
+            <div class="thumb"><a href="outputs/orinth-1-0-95.html"><img src="screenshots/orinth-1-0-95.png" alt="Orinth 1.0 95" loading="lazy"></a></div>
+            <div class="body">
+                <h3>Orinth 1.0 95</h3>
+                <div class="meta">
+                    <span class="arch arch-canvas">Canvas</span>
+                    <span class="tag">orinth</span>
+                </div>
+                <div class="badges"><span class="badge ok">touch</span></div>
+                <div class="stats">
+                    <span><b>11.2KB</b> · 387L</span>
+                    
+                    
+                </div>
+            </div>
+        </article>
+
+        <article class="card" data-name="qwen3 4b thinking glm4.6 distill" data-size="35099" data-patterns="4" data-arch="dom">
+            <div class="thumb"><a href="outputs/qwen3-4b-thinking-glm46-distill.html"><img src="screenshots/qwen3-4b-thinking-glm46-distill.png" alt="Qwen3 4B Thinking GLM4.6 Distill" loading="lazy"></a></div>
+            <div class="body">
+                <h3>Qwen3 4B Thinking GLM4.6 Distill</h3>
+                <div class="meta">
+                    <span class="arch arch-dom">DOM</span>
+                    <span class="tag">qwen</span><span class="tag">small</span><span class="tag">distill</span>
+                </div>
+                <div class="badges"><span class="badge ok">keyboard</span> <span class="badge ok">responsive</span> <span class="badge ok">4 patterns</span></div>
+                <div class="stats">
+                    <span><b>34.3KB</b> · 1143L</span>
+                    
+                    
+                </div>
+            </div>
+        </article>
+
+        <article class="card" data-name="qwen3 4b thinking glm4.6 distill (minimaxm2)" data-size="7610" data-patterns="0" data-arch="dom">
+            <div class="thumb"><a href="outputs/qwen3-4b-thinking-glm46-distill-minimaxm2.html"><img src="screenshots/qwen3-4b-thinking-glm46-distill-minimaxm2.png" alt="Qwen3 4B Thinking GLM4.6 Distill (MinimaxM2)" loading="lazy"></a></div>
+            <div class="body">
+                <h3>Qwen3 4B Thinking GLM4.6 Distill (MinimaxM2)</h3>
+                <div class="meta">
+                    <span class="arch arch-dom">DOM</span>
+                    <span class="tag">qwen</span><span class="tag">small</span><span class="tag">distill</span>
+                </div>
+                <div class="badges"><span class="badge ok">keyboard</span></div>
+                <div class="stats">
+                    <span><b>7.4KB</b> · 281L</span>
+                    
+                    
+                </div>
+            </div>
+        </article>
+
+        <article class="card" data-name="qwen3 4b thinking glm4.6 distill n100" data-size="7610" data-patterns="0" data-arch="dom">
+            <div class="thumb"><a href="outputs/qwen3-4b-thinking-glm46-distill-n100.html"><img src="screenshots/qwen3-4b-thinking-glm46-distill-n100.png" alt="Qwen3 4B Thinking GLM4.6 Distill N100" loading="lazy"></a></div>
+            <div class="body">
+                <h3>Qwen3 4B Thinking GLM4.6 Distill N100</h3>
+                <div class="meta">
+                    <span class="arch arch-dom">DOM</span>
+                    <span class="tag">qwen</span><span class="tag">small</span><span class="tag">distill</span>
+                </div>
+                <div class="badges"><span class="badge ok">keyboard</span></div>
+                <div class="stats">
+                    <span><b>7.4KB</b> · 281L</span>
+                    
+                    
+                </div>
+            </div>
+        </article>
+
+        <article class="card" data-name="qwen3 coder 30b moe-6 1024 ingestion" data-size="21956" data-patterns="5" data-arch="canvas">
+            <div class="thumb"><a href="outputs/qwen3-coder-30b-moe-6-1024ingestion.html"><img src="screenshots/qwen3-coder-30b-moe-6-1024ingestion.png" alt="Qwen3 Coder 30B MoE-6 1024 Ingestion" loading="lazy"></a></div>
+            <div class="body">
+                <h3>Qwen3 Coder 30B MoE-6 1024 Ingestion</h3>
+                <div class="meta">
+                    <span class="arch arch-canvas">Canvas</span>
+                    <span class="tag">qwen</span><span class="tag">moe</span>
+                </div>
+                <div class="badges"><span class="badge ok">toroidal</span> <span class="badge">glow</span> <span class="badge ok">responsive</span> <span class="badge ok">5 patterns</span></div>
+                <div class="stats">
+                    <span><b>21.4KB</b> · 640L</span>
+                    
+                    
+                </div>
+            </div>
+        </article>
+
+        <article class="card" data-name="qwen3-distill-claude-opus-4.6-v1" data-size="11665" data-patterns="0" data-arch="dom">
+            <div class="thumb"><a href="outputs/qwen3-distill-claude-opus-4.6-v1.html"><img src="screenshots/qwen3-distill-claude-opus-4.6-v1.png" alt="Qwen3-distill-claude-opus-4.6-v1" loading="lazy"></a></div>
+            <div class="body">
+                <h3>Qwen3-distill-claude-opus-4.6-v1</h3>
+                <div class="meta">
+                    <span class="arch arch-dom">DOM</span>
+                    <span class="tag">historical</span>
+                </div>
+                <div class="badges"><span class="badge ok">localStorage</span></div>
+                <div class="stats">
+                    <span><b>11.4KB</b> · 337L</span>
+                    
+                    
+                </div>
+            </div>
+        </article>
+
+        <article class="card" data-name="qwen3-distill-claude-opus-4.6-v2" data-size="17821" data-patterns="1" data-arch="dom">
+            <div class="thumb"><a href="outputs/qwen3-distill-claude-opus-4.6-v2.html"><img src="screenshots/qwen3-distill-claude-opus-4.6-v2.png" alt="Qwen3-distill-claude-opus-4.6-v2" loading="lazy"></a></div>
+            <div class="body">
+                <h3>Qwen3-distill-claude-opus-4.6-v2</h3>
+                <div class="meta">
+                    <span class="arch arch-dom">DOM</span>
+                    <span class="tag">historical</span>
+                </div>
+                <div class="badges"><span class="badge ok">localStorage</span> <span class="badge">glow</span> <span class="badge ok">responsive</span> <span class="badge">1 pattern</span></div>
+                <div class="stats">
+                    <span><b>17.4KB</b> · 554L</span>
+                    
+                    
+                </div>
+            </div>
+        </article>
+
+        <article class="card" data-name="qwen3 next" data-size="11916" data-patterns="0" data-arch="canvas">
+            <div class="thumb"><a href="outputs/qwen3-next.html"><img src="screenshots/qwen3-next.png" alt="Qwen3 Next" loading="lazy"></a></div>
+            <div class="body">
+                <h3>Qwen3 Next</h3>
+                <div class="meta">
+                    <span class="arch arch-canvas">Canvas</span>
+                    <span class="tag">qwen</span>
+                </div>
+                <div class="badges"><span class="badge ok">toroidal</span></div>
+                <div class="stats">
+                    <span><b>11.6KB</b> · 330L</span>
+                    
+                    
+                </div>
+            </div>
+        </article>
+
+        <article class="card" data-name="qwen3 next v2" data-size="46040" data-patterns="5" data-arch="canvas">
+            <div class="thumb"><a href="outputs/qwen3-next-v2.html"><img src="screenshots/qwen3-next-v2.png" alt="Qwen3 Next v2" loading="lazy"></a></div>
+            <div class="body">
+                <h3>Qwen3 Next v2</h3>
+                <div class="meta">
+                    <span class="arch arch-canvas">Canvas</span>
+                    <span class="tag">qwen</span>
+                </div>
+                <div class="badges"><span class="badge ok">toroidal</span> <span class="badge ok">drag-paint</span> <span class="badge">particles</span> <span class="badge">glow</span> <span class="badge ok">responsive</span> <span class="badge ok">5 patterns</span></div>
+                <div class="stats">
+                    <span><b>45.0KB</b> · 1250L</span>
+                    
+                    
+                </div>
+            </div>
+        </article>
+
+        <article class="card" data-name="qwen3.5-0.8b-coder-calude-full" data-size="15701" data-patterns="1" data-arch="canvas">
+            <div class="thumb"><a href="outputs/qwen3.5-0.8b-coder-calude-full.html"><img src="screenshots/qwen3.5-0.8b-coder-calude-full.png" alt="Qwen3.5-0.8b-coder-calude-full" loading="lazy"></a></div>
+            <div class="body">
+                <h3>Qwen3.5-0.8b-coder-calude-full</h3>
+                <div class="meta">
+                    <span class="arch arch-canvas">Canvas</span>
+                    <span class="tag">historical</span>
+                </div>
+                <div class="badges"><span class="badge ok">keyboard</span> <span class="badge ok">responsive</span> <span class="badge">1 pattern</span></div>
+                <div class="stats">
+                    <span><b>15.3KB</b> · 448L</span>
+                    
+                    
+                </div>
+            </div>
+        </article>
+
+        <article class="card" data-name="qwen3.5-27b-distill-opus4.6-v2" data-size="7136" data-patterns="0" data-arch="dom">
+            <div class="thumb"><a href="outputs/qwen3.5-27b-distill-opus4.6-v2.html"><img src="screenshots/qwen3.5-27b-distill-opus4.6-v2.png" alt="Qwen3.5-27b-distill-opus4.6-v2" loading="lazy"></a></div>
+            <div class="body">
+                <h3>Qwen3.5-27b-distill-opus4.6-v2</h3>
+                <div class="meta">
+                    <span class="arch arch-dom">DOM</span>
+                    <span class="tag">historical</span>
+                </div>
+                <div class="badges"><span class="badge ok">toroidal</span></div>
+                <div class="stats">
+                    <span><b>7.0KB</b> · 229L</span>
+                    
+                    
+                </div>
+            </div>
+        </article>
+
+        <article class="card" data-name="qwen3.5-27b-distill-opus4.6-v2_3d_v1" data-size="15878" data-patterns="1" data-arch="3d">
+            <div class="thumb"><a href="outputs/qwen3.5-27b-distill-opus4.6-v2-3d-v1.html"><img src="screenshots/qwen3.5-27b-distill-opus4.6-v2-3d-v1.png" alt="Qwen3.5-27b-distill-opus4.6-v2_3d_v1" loading="lazy"></a></div>
+            <div class="body">
+                <h3>Qwen3.5-27b-distill-opus4.6-v2_3d_v1</h3>
+                <div class="meta">
+                    <span class="arch arch-3d">3D</span>
+                    <span class="tag">historical</span>
+                </div>
+                <div class="badges"><span class="badge ok">toroidal</span> <span class="badge">glow</span> <span class="badge">1 pattern</span></div>
+                <div class="stats">
+                    <span><b>15.5KB</b> · 463L</span>
+                    
+                    
+                </div>
+            </div>
+        </article>
+
+        <article class="card" data-name="qwen3.5-27b-distill-opus4.6-v2_3d_v2" data-size="23736" data-patterns="1" data-arch="3d">
+            <div class="thumb"><a href="outputs/qwen3.5-27b-distill-opus4.6-v2-3d-v2.html"><img src="screenshots/qwen3.5-27b-distill-opus4.6-v2-3d-v2.png" alt="Qwen3.5-27b-distill-opus4.6-v2_3d_v2" loading="lazy"></a></div>
+            <div class="body">
+                <h3>Qwen3.5-27b-distill-opus4.6-v2_3d_v2</h3>
+                <div class="meta">
+                    <span class="arch arch-3d">3D</span>
+                    <span class="tag">historical</span>
+                </div>
+                <div class="badges"><span class="badge ok">toroidal</span> <span class="badge">particles</span> <span class="badge">glow</span> <span class="badge">1 pattern</span></div>
+                <div class="stats">
+                    <span><b>23.2KB</b> · 642L</span>
+                    
+                    
+                </div>
+            </div>
+        </article>
+
+        <article class="card" data-name="qwen3.5-27b-distill-opus4.6-v2_ui_improved_v1" data-size="12748" data-patterns="0" data-arch="dom">
+            <div class="thumb"><a href="outputs/qwen3.5-27b-distill-opus4.6-v2-ui-improved-v1.html"><img src="screenshots/qwen3.5-27b-distill-opus4.6-v2-ui-improved-v1.png" alt="Qwen3.5-27b-distill-opus4.6-v2_ui_improved_v1" loading="lazy"></a></div>
+            <div class="body">
+                <h3>Qwen3.5-27b-distill-opus4.6-v2_ui_improved_v1</h3>
+                <div class="meta">
+                    <span class="arch arch-dom">DOM</span>
+                    <span class="tag">historical</span>
+                </div>
+                <div class="badges"><span class="badge ok">toroidal</span> <span class="badge">glow</span> <span class="badge ok">responsive</span></div>
+                <div class="stats">
+                    <span><b>12.4KB</b> · 383L</span>
+                    
+                    
+                </div>
+            </div>
+        </article>
+
+        <article class="card" data-name="qwen3.5-35b-a3b-v1" data-size="11347" data-patterns="1" data-arch="canvas">
+            <div class="thumb"><a href="outputs/qwen3.5-35b-a3b-v1.html"><img src="screenshots/qwen3.5-35b-a3b-v1.png" alt="Qwen3.5-35b-a3b-v1" loading="lazy"></a></div>
+            <div class="body">
+                <h3>Qwen3.5-35b-a3b-v1</h3>
+                <div class="meta">
+                    <span class="arch arch-canvas">Canvas</span>
+                    <span class="tag">historical</span>
+                </div>
+                <div class="badges"><span class="badge">1 pattern</span></div>
+                <div class="stats">
+                    <span><b>11.1KB</b> · 328L</span>
+                    
+                    
+                </div>
+            </div>
+        </article>
+
+        <article class="card" data-name="qwen3.5-35b-a3b-v2" data-size="12052" data-patterns="1" data-arch="canvas">
+            <div class="thumb"><a href="outputs/qwen3.5-35b-a3b-v2.html"><img src="screenshots/qwen3.5-35b-a3b-v2.png" alt="Qwen3.5-35b-a3b-v2" loading="lazy"></a></div>
+            <div class="body">
+                <h3>Qwen3.5-35b-a3b-v2</h3>
+                <div class="meta">
+                    <span class="arch arch-canvas">Canvas</span>
+                    <span class="tag">historical</span>
+                </div>
+                <div class="badges"><span class="badge">glow</span> <span class="badge">1 pattern</span></div>
+                <div class="stats">
+                    <span><b>11.8KB</b> · 362L</span>
+                    
+                    
+                </div>
+            </div>
+        </article>
+
+        <article class="card" data-name="qwen3.5-35b-a3b-v3-3d-v2" data-size="20031" data-patterns="1" data-arch="3d">
+            <div class="thumb"><a href="outputs/qwen3.5-35b-a3b-v3-3d-v2.html"><img src="screenshots/qwen3.5-35b-a3b-v3-3d-v2.png" alt="Qwen3.5-35b-a3b-v3-3D-v2" loading="lazy"></a></div>
+            <div class="body">
+                <h3>Qwen3.5-35b-a3b-v3-3D-v2</h3>
+                <div class="meta">
+                    <span class="arch arch-3d">3D</span>
+                    <span class="tag">historical</span>
+                </div>
+                <div class="badges"><span class="badge ok">toroidal</span> <span class="badge ok">drag-paint</span> <span class="badge">glow</span> <span class="badge">1 pattern</span></div>
+                <div class="stats">
+                    <span><b>19.6KB</b> · 580L</span>
+                    
+                    
+                </div>
+            </div>
+        </article>
+
+        <article class="card" data-name="qwen3.5-35b-a3b-v3-3d" data-size="12950" data-patterns="0" data-arch="3d">
+            <div class="thumb"><a href="outputs/qwen3.5-35b-a3b-v3-3d.html"><img src="screenshots/qwen3.5-35b-a3b-v3-3d.png" alt="Qwen3.5-35b-a3b-v3-3D" loading="lazy"></a></div>
+            <div class="body">
+                <h3>Qwen3.5-35b-a3b-v3-3D</h3>
+                <div class="meta">
+                    <span class="arch arch-3d">3D</span>
+                    <span class="tag">historical</span>
+                </div>
+                <div class="badges"><span class="badge ok">toroidal</span> <span class="badge">glow</span></div>
+                <div class="stats">
+                    <span><b>12.6KB</b> · 398L</span>
+                    
+                    
+                </div>
+            </div>
+        </article>
+
+        <article class="card" data-name="qwen3.5-4b-opus4-6_distill_v1" data-size="9802" data-patterns="1" data-arch="canvas">
+            <div class="thumb"><a href="outputs/qwen3.5-4b-opus4-6-distill-v1.html"><img src="screenshots/qwen3.5-4b-opus4-6-distill-v1.png" alt="Qwen3.5-4b-Opus4-6_distill_v1" loading="lazy"></a></div>
+            <div class="body">
+                <h3>Qwen3.5-4b-Opus4-6_distill_v1</h3>
+                <div class="meta">
+                    <span class="arch arch-canvas">Canvas</span>
+                    <span class="tag">historical</span>
+                </div>
+                <div class="badges"><span class="badge">1 pattern</span></div>
+                <div class="stats">
+                    <span><b>9.6KB</b> · 326L</span>
+                    
+                    
+                </div>
+            </div>
+        </article>
+
+        <article class="card" data-name="qwen3.5-4b-opus4-6_distill_v2" data-size="27823" data-patterns="4" data-arch="canvas">
+            <div class="thumb"><a href="outputs/qwen3.5-4b-opus4-6-distill-v2.html"><img src="screenshots/qwen3.5-4b-opus4-6-distill-v2.png" alt="Qwen3.5-4b-Opus4-6_distill_v2" loading="lazy"></a></div>
+            <div class="body">
+                <h3>Qwen3.5-4b-Opus4-6_distill_v2</h3>
+                <div class="meta">
+                    <span class="arch arch-canvas">Canvas</span>
+                    <span class="tag">historical</span>
+                </div>
+                <div class="badges"><span class="badge ok">toroidal</span> <span class="badge ok">drag-paint</span> <span class="badge">glow</span> <span class="badge ok">responsive</span> <span class="badge ok">4 patterns</span></div>
+                <div class="stats">
+                    <span><b>27.2KB</b> · 846L</span>
+                    
+                    
+                </div>
+            </div>
+        </article>
+
+        <article class="card" data-name="qwen3.5-4b-v1" data-size="9049" data-patterns="0" data-arch="canvas">
+            <div class="thumb"><a href="outputs/qwen3.5-4b-v1.html"><img src="screenshots/qwen3.5-4b-v1.png" alt="Qwen3.5-4b-v1" loading="lazy"></a></div>
+            <div class="body">
+                <h3>Qwen3.5-4b-v1</h3>
+                <div class="meta">
+                    <span class="arch arch-canvas">Canvas</span>
+                    <span class="tag">historical</span>
+                </div>
+                <div class="badges"><span class="badge ok">toroidal</span></div>
+                <div class="stats">
+                    <span><b>8.8KB</b> · 292L</span>
+                    
+                    
+                </div>
+            </div>
+        </article>
+
+        <article class="card" data-name="qwen3.5-4b-v2" data-size="8984" data-patterns="1" data-arch="canvas">
+            <div class="thumb"><a href="outputs/qwen3.5-4b-v2.html"><img src="screenshots/qwen3.5-4b-v2.png" alt="Qwen3.5-4b-v2" loading="lazy"></a></div>
+            <div class="body">
+                <h3>Qwen3.5-4b-v2</h3>
+                <div class="meta">
+                    <span class="arch arch-canvas">Canvas</span>
+                    <span class="tag">historical</span>
+                </div>
+                <div class="badges"><span class="badge ok">toroidal</span> <span class="badge">1 pattern</span></div>
+                <div class="stats">
+                    <span><b>8.8KB</b> · 276L</span>
+                    
+                    
+                </div>
+            </div>
+        </article>
+
+        <article class="card" data-name="qwen3.5-4b-v3-3d-fixed-by-glm37-flash" data-size="15733" data-patterns="0" data-arch="3d">
+            <div class="thumb"><a href="outputs/qwen3.5-4b-v3-3d-fixed-by-glm37-flash.html"><img src="screenshots/qwen3.5-4b-v3-3d-fixed-by-glm37-flash.png" alt="Qwen3.5-4b-v3-3D-fixed-by-GLM37-flash" loading="lazy"></a></div>
+            <div class="body">
+                <h3>Qwen3.5-4b-v3-3D-fixed-by-GLM37-flash</h3>
+                <div class="meta">
+                    <span class="arch arch-3d">3D</span>
+                    <span class="tag">historical</span>
+                </div>
+                <div class="badges"><span class="badge ok">toroidal</span> <span class="badge">glow</span></div>
+                <div class="stats">
+                    <span><b>15.4KB</b> · 427L</span>
+                    
+                    
+                </div>
+            </div>
+        </article>
+
+        <article class="card" data-name="qwen3.5-4b-v3-fixed-by-glm37-flash" data-size="10106" data-patterns="1" data-arch="canvas">
+            <div class="thumb"><a href="outputs/qwen3.5-4b-v3-fixed-by-glm37-flash.html"><img src="screenshots/qwen3.5-4b-v3-fixed-by-glm37-flash.png" alt="Qwen3.5-4b-v3-fixed-by-GLM37-flash" loading="lazy"></a></div>
+            <div class="body">
+                <h3>Qwen3.5-4b-v3-fixed-by-GLM37-flash</h3>
+                <div class="meta">
+                    <span class="arch arch-canvas">Canvas</span>
+                    <span class="tag">historical</span>
+                </div>
+                <div class="badges"><span class="badge ok">toroidal</span> <span class="badge">1 pattern</span></div>
+                <div class="stats">
+                    <span><b>9.9KB</b> · 323L</span>
+                    
+                    
+                </div>
+            </div>
+        </article>
+
+        <article class="card" data-name="qwen3.5-9b-distill-opus4.6-v2" data-size="9536" data-patterns="0" data-arch="dom">
+            <div class="thumb"><a href="outputs/qwen3.5-9b-distill-opus4.6-v2.html"><img src="screenshots/qwen3.5-9b-distill-opus4.6-v2.png" alt="Qwen3.5-9b-distill-opus4.6-v2" loading="lazy"></a></div>
+            <div class="body">
+                <h3>Qwen3.5-9b-distill-opus4.6-v2</h3>
+                <div class="meta">
+                    <span class="arch arch-dom">DOM</span>
+                    <span class="tag">historical</span>
+                </div>
+                <div class="badges"></div>
+                <div class="stats">
+                    <span><b>9.3KB</b> · 303L</span>
+                    
+                    
+                </div>
+            </div>
+        </article>
+
+        <article class="card" data-name="qwen3.5-9b-distill-opus4.6-v2_3d" data-size="18271" data-patterns="1" data-arch="3d">
+            <div class="thumb"><a href="outputs/qwen3.5-9b-distill-opus4.6-v2-3d.html"><img src="screenshots/qwen3.5-9b-distill-opus4.6-v2-3d.png" alt="Qwen3.5-9b-distill-opus4.6-v2_3d" loading="lazy"></a></div>
+            <div class="body">
+                <h3>Qwen3.5-9b-distill-opus4.6-v2_3d</h3>
+                <div class="meta">
+                    <span class="arch arch-3d">3D</span>
+                    <span class="tag">historical</span>
+                </div>
+                <div class="badges"><span class="badge ok">export</span> <span class="badge">glow</span> <span class="badge">1 pattern</span></div>
+                <div class="stats">
+                    <span><b>17.8KB</b> · 536L</span>
+                    
+                    
+                </div>
+            </div>
+        </article>
+
+        <article class="card" data-name="qwen3.5-9b-distill-opus4.6-v2_ui_improved" data-size="10710" data-patterns="0" data-arch="dom">
+            <div class="thumb"><a href="outputs/qwen3.5-9b-distill-opus4.6-v2-ui-improved.html"><img src="screenshots/qwen3.5-9b-distill-opus4.6-v2-ui-improved.png" alt="Qwen3.5-9b-distill-opus4.6-v2_ui_improved" loading="lazy"></a></div>
+            <div class="body">
+                <h3>Qwen3.5-9b-distill-opus4.6-v2_ui_improved</h3>
+                <div class="meta">
+                    <span class="arch arch-dom">DOM</span>
+                    <span class="tag">historical</span>
+                </div>
+                <div class="badges"><span class="badge ok">toroidal</span> <span class="badge">glow</span> <span class="badge ok">responsive</span></div>
+                <div class="stats">
+                    <span><b>10.5KB</b> · 350L</span>
+                    
+                    
+                </div>
+            </div>
+        </article>
+
+        <article class="card" data-name="qwen3.6-27b-3d" data-size="13098" data-patterns="1" data-arch="3d">
+            <div class="thumb"><a href="outputs/qwen3.6-27b-3d.html"><img src="screenshots/qwen3.6-27b-3d.png" alt="Qwen3.6-27b-3D" loading="lazy"></a></div>
+            <div class="body">
+                <h3>Qwen3.6-27b-3D</h3>
+                <div class="meta">
+                    <span class="arch arch-3d">3D</span>
+                    <span class="tag">historical</span>
+                </div>
+                <div class="badges"><span class="badge ok">toroidal</span> <span class="badge">glow</span> <span class="badge">1 pattern</span></div>
+                <div class="stats">
+                    <span><b>12.8KB</b> · 407L</span>
+                    
+                    
+                </div>
+            </div>
+        </article>
+
+        <article class="card" data-name="qwen3.6-27b" data-size="13525" data-patterns="8" data-arch="canvas">
+            <div class="thumb"><a href="outputs/qwen3.6-27b.html"><img src="screenshots/qwen3.6-27b.png" alt="Qwen3.6-27b" loading="lazy"></a></div>
+            <div class="body">
+                <h3>Qwen3.6-27b</h3>
+                <div class="meta">
+                    <span class="arch arch-canvas">Canvas</span>
+                    <span class="tag">historical</span>
+                </div>
+                <div class="badges"><span class="badge ok">toroidal</span> <span class="badge ok">keyboard</span> <span class="badge ok">touch</span> <span class="badge ok">8 patterns</span></div>
+                <div class="stats">
+                    <span><b>13.2KB</b> · 537L</span>
+                    
+                    
+                </div>
+            </div>
+        </article>
+
+        <article class="card" data-name="qwen3.6-35b-a3b_opus4.6_distill" data-size="11849" data-patterns="1" data-arch="canvas">
+            <div class="thumb"><a href="outputs/qwen3.6-35b-a3b-opus4.6-distill.html"><img src="screenshots/qwen3.6-35b-a3b-opus4.6-distill.png" alt="Qwen3.6-35b-a3b_Opus4.6_distill" loading="lazy"></a></div>
+            <div class="body">
+                <h3>Qwen3.6-35b-a3b_Opus4.6_distill</h3>
+                <div class="meta">
+                    <span class="arch arch-canvas">Canvas</span>
+                    <span class="tag">historical</span>
+                </div>
+                <div class="badges"><span class="badge ok">toroidal</span> <span class="badge">1 pattern</span></div>
+                <div class="stats">
+                    <span><b>11.6KB</b> · 413L</span>
+                    
+                    
+                </div>
+            </div>
+        </article>
+
+        <article class="card" data-name="qwen3.6-35b-a3b_opus4.6_distill_3d" data-size="22782" data-patterns="0" data-arch="3d">
+            <div class="thumb"><a href="outputs/qwen3.6-35b-a3b-opus4.6-distill-3d.html"><img src="screenshots/qwen3.6-35b-a3b-opus4.6-distill-3d.png" alt="Qwen3.6-35b-a3b_Opus4.6_distill_3d" loading="lazy"></a></div>
+            <div class="body">
+                <h3>Qwen3.6-35b-a3b_Opus4.6_distill_3d</h3>
+                <div class="meta">
+                    <span class="arch arch-3d">3D</span>
+                    <span class="tag">historical</span>
+                </div>
+                <div class="badges"><span class="badge ok">toroidal</span></div>
+                <div class="stats">
+                    <span><b>22.2KB</b> · 671L</span>
+                    
+                    
+                </div>
+            </div>
+        </article>
+
+        <article class="card" data-name="qwen3.6-35b-a3b_opus4.6_distill_v2" data-size="12564" data-patterns="1" data-arch="canvas">
+            <div class="thumb"><a href="outputs/qwen3.6-35b-a3b-opus4.6-distill-v2.html"><img src="screenshots/qwen3.6-35b-a3b-opus4.6-distill-v2.png" alt="Qwen3.6-35b-a3b_Opus4.6_distill_v2" loading="lazy"></a></div>
+            <div class="body">
+                <h3>Qwen3.6-35b-a3b_Opus4.6_distill_v2</h3>
+                <div class="meta">
+                    <span class="arch arch-canvas">Canvas</span>
+                    <span class="tag">historical</span>
+                </div>
+                <div class="badges"><span class="badge ok">toroidal</span> <span class="badge">1 pattern</span></div>
+                <div class="stats">
+                    <span><b>12.3KB</b> · 376L</span>
+                    
+                    
+                </div>
+            </div>
+        </article>
+
+        <article class="card" data-name="qwen3.6-35b_a3b_mtp" data-size="16989" data-patterns="7" data-arch="canvas">
+            <div class="thumb"><a href="outputs/qwen3.6-35b-a3b-mtp.html"><img src="screenshots/qwen3.6-35b-a3b-mtp.png" alt="Qwen3.6-35b_a3b_mtp" loading="lazy"></a></div>
+            <div class="body">
+                <h3>Qwen3.6-35b_a3b_mtp</h3>
+                <div class="meta">
+                    <span class="arch arch-canvas">Canvas</span>
+                    <span class="tag">historical</span>
+                </div>
+                <div class="badges"><span class="badge ok">toroidal</span> <span class="badge ok">drag-paint</span> <span class="badge ok">touch</span> <span class="badge">glow</span> <span class="badge ok">7 patterns</span></div>
+                <div class="stats">
+                    <span><b>16.6KB</b> · 497L</span>
+                    
+                    
+                </div>
+            </div>
+        </article>
+
+        <article class="card" data-name="qwen3.6-35b_a3b_mtp_3d" data-size="23352" data-patterns="7" data-arch="3d">
+            <div class="thumb"><a href="outputs/qwen3.6-35b-a3b-mtp-3d.html"><img src="screenshots/qwen3.6-35b-a3b-mtp-3d.png" alt="Qwen3.6-35b_a3b_mtp_3D" loading="lazy"></a></div>
+            <div class="body">
+                <h3>Qwen3.6-35b_a3b_mtp_3D</h3>
+                <div class="meta">
+                    <span class="arch arch-3d">3D</span>
+                    <span class="tag">historical</span>
+                </div>
+                <div class="badges"><span class="badge">particles</span> <span class="badge">glow</span> <span class="badge ok">7 patterns</span></div>
+                <div class="stats">
+                    <span><b>22.8KB</b> · 814L</span>
+                    
+                    
+                </div>
+            </div>
+        </article>
+
+        <article class="card" data-name="qwen38-27b-q8" data-size="26781" data-patterns="6" data-arch="canvas">
+            <div class="thumb"><a href="outputs/qwen38-27b-q8.html"><img src="screenshots/qwen38-27b-q8.png" alt="Qwen38-27b-Q8" loading="lazy"></a></div>
+            <div class="body">
+                <h3>Qwen38-27b-Q8</h3>
+                <div class="meta">
+                    <span class="arch arch-canvas">Canvas</span>
+                    <span class="tag">historical</span>
+                </div>
+                <div class="badges"><span class="badge ok">keyboard</span> <span class="badge ok">responsive</span> <span class="badge ok">6 patterns</span></div>
+                <div class="stats">
+                    <span><b>26.2KB</b> · 562L</span>
+                    
+                    
+                </div>
+            </div>
+        </article>
+
+        <article class="card" data-name="conwaygameoflife" data-size="24201" data-patterns="3" data-arch="dom">
+            <div class="thumb"><a href="outputs/conwaygameoflife.html"><img src="screenshots/conwaygameoflife.png" alt="ConwayGameofLife" loading="lazy"></a></div>
+            <div class="body">
+                <h3>ConwayGameofLife</h3>
+                <div class="meta">
+                    <span class="arch arch-dom">DOM</span>
+                    <span class="tag">historical</span>
+                </div>
+                <div class="badges"><span class="badge ok">keyboard</span> <span class="badge ok">export</span> <span class="badge ok">responsive</span> <span class="badge ok">3 patterns</span></div>
+                <div class="stats">
+                    <span><b>23.6KB</b> · 660L</span>
+                    
+                    
+                </div>
+            </div>
+        </article>
+
+        <article class="card" data-name="taalas asic v1" data-size="3987" data-patterns="0" data-arch="dom">
+            <div class="thumb"><a href="outputs/taalas-asic-v1.html"><img src="screenshots/taalas-asic-v1.png" alt="Taalas ASIC v1" loading="lazy"></a></div>
+            <div class="body">
+                <h3>Taalas ASIC v1</h3>
+                <div class="meta">
+                    <span class="arch arch-dom">DOM</span>
+                    <span class="tag">taalas</span><span class="tag">experimental</span>
+                </div>
+                <div class="badges"></div>
+                <div class="stats">
+                    <span><b>3.9KB</b> · 132L</span>
+                    
+                    
+                </div>
+            </div>
+        </article>
+
+        <article class="card" data-name="taalas asic v2" data-size="4897" data-patterns="0" data-arch="dom">
+            <div class="thumb"><a href="outputs/taalas-asic-v2.html"><img src="screenshots/taalas-asic-v2.png" alt="Taalas ASIC v2" loading="lazy"></a></div>
+            <div class="body">
+                <h3>Taalas ASIC v2</h3>
+                <div class="meta">
+                    <span class="arch arch-dom">DOM</span>
+                    <span class="tag">taalas</span><span class="tag">experimental</span>
+                </div>
+                <div class="badges"></div>
+                <div class="stats">
+                    <span><b>4.8KB</b> · 162L</span>
+                    
+                    
+                </div>
+            </div>
+        </article>
+
+        <article class="card" data-name="oblaci polja nemotron 3 nano" data-size="1220" data-patterns="0" data-arch="svg">
+            <div class="thumb"><a href="outputs/oblaci-polja-nemotron-3-nano.html"><img src="screenshots/oblaci-polja-nemotron-3-nano.png" alt="Oblaci Polja Nemotron 3 Nano" loading="lazy"></a></div>
+            <div class="body">
+                <h3>Oblaci Polja Nemotron 3 Nano</h3>
+                <div class="meta">
+                    <span class="arch arch-svg">SVG</span>
+                    <span class="tag">nvidia</span><span class="tag">small</span><span class="tag">svg</span>
+                </div>
+                <div class="badges"></div>
+                <div class="stats">
+                    <span><b>1.2KB</b> · 34L</span>
+                    
+                    
+                </div>
+            </div>
+        </article>
+
+        <article class="card" data-name="oblaci polja nemotron 3 nano 3d" data-size="11860" data-patterns="1" data-arch="3d">
+            <div class="thumb"><a href="outputs/oblaci-polja-nemotron-3-nano-3d.html"><img src="screenshots/oblaci-polja-nemotron-3-nano-3d.png" alt="Oblaci Polja Nemotron 3 Nano 3D" loading="lazy"></a></div>
+            <div class="body">
+                <h3>Oblaci Polja Nemotron 3 Nano 3D</h3>
+                <div class="meta">
+                    <span class="arch arch-3d">3D</span>
+                    <span class="tag">nvidia</span><span class="tag">small</span><span class="tag">svg</span>
+                </div>
+                <div class="badges"><span class="badge ok">keyboard</span> <span class="badge">1 pattern</span></div>
+                <div class="stats">
+                    <span><b>11.6KB</b> · 315L</span>
+                    
+                    
+                </div>
+            </div>
+        </article>
+</main>
+
+<footer>
+  Generated by <code>scripts/report.js</code> · 2026-08-25T11:00:42.569Z
+</footer>
+
+<script>
+(function () {
+  const cards = Array.from(document.querySelectorAll('.card'));
+  const search = document.getElementById('search');
+  const filterBtns = Array.from(document.querySelectorAll('.tag-btn'));
+  let activeTag = '__all';
+
+  function apply() {
+    const q = (search.value || '').toLowerCase().trim();
+    for (const card of cards) {
+      const name = card.dataset.name || '';
+      const tagsAttr = (card.querySelector('.meta')?.textContent || '').toLowerCase();
+      const matchesQuery = !q || name.includes(q);
+      const matchesTag = activeTag === '__all' || tagsAttr.includes(activeTag);
+      card.classList.toggle('hidden', !(matchesQuery && matchesTag));
+    }
+  }
+
+  search.addEventListener('input', apply);
+  for (const btn of filterBtns) {
+    btn.addEventListener('click', () => {
+      filterBtns.forEach((b) => b.classList.toggle('active', b === btn));
+      activeTag = btn.dataset.tag;
+      apply();
+    });
+  }
+})();
+</script>
+</body>
+</html>

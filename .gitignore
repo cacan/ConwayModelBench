@@ -1,0 +1,30 @@
+# Dependencies
+node_modules/
+
+# OS junk
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Editor noise
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Tooling internal state
+.dsh-vision-toolkit/
+.dsh-tmp/
+
+# Logs
+*.log
+npm-debug.log*
+
+# Bench run artifacts (regeneratable)
+screenshots/*.png.tmp
+
+# Generated manifests (kept in git for the canonical repo, ignored for transient runs)
+# outputs/manifest.local.json
+
+# Don't track the legacy random screenshot (replaced by per-model screenshots)
+game-randomized.png

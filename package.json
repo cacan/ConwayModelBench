@@ -1,0 +1,29 @@
+{
+  "name": "conway-model-bench",
+  "version": "0.1.0",
+  "description": "Benchmark LLMs served by LM Studio on the same Conway's Game of Life prompt",
+  "main": "scripts/bench.js",
+  "scripts": {
+    "bench": "node scripts/bench.js",
+    "screenshots": "node scripts/screenshot.js",
+    "report": "node scripts/report.js",
+    "all": "node scripts/bench.js && node scripts/screenshot.js && node scripts/report.js"
+  },
+  "keywords": [
+    "conway",
+    "game-of-life",
+    "llm",
+    "benchmark",
+    "lm-studio",
+    "cellular-automaton"
+  ],
+  "author": "",
+  "license": "MIT",
+  "type": "commonjs",
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "dependencies": {
+    "playwright": "^1.56.1"
+  }
+}

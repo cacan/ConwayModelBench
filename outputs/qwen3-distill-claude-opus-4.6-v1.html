@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Conway's Game of Life</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        body {
+            background-color: #f5f7fa;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            width: 100%;
+            max-width: 900px;
+            background-color: white;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+        }
+        
+        header {
+            background-color: #2c3e50;
+            color: white;
+            padding: 15px 20px;
+            text-align: center;
+        }
+        
+        h1 {
+            margin-bottom: 5px;
+            font-size: 24px;
+        }
+        
+        .controls {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 20px;
+            background-color: #f8f9fa;
+            border-bottom: 1px solid #eaeaea;
+        }
+        
+        .control-group {
+            display: flex;
+            gap: 15px;
+            margin-left: auto;
+        }
+        
+        label {
+            font-weight: bold;
+            min-width: 70px;
+        }
+        
+        input[type="range"] {
+            width: 200px;
+            height: 10px;
+            background-color: #e0e6ed;
+            border-radius: 5px;
+            outline: none;
+        }
+        
+        input[type="number"] {
+            width: 80px;
+            padding: 4px;
+            font-size: 14px;
+        }
+        
+        .canvas-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: calc(100vh - 250px);
+            overflow: hidden;
+        }
+        
+        #game-board {
+            position: relative;
+            width: 800px;
+            height: 600px;
+            background-color: #f0f0f0;
+        }
+        
+        .cell {
+            position: absolute;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            transition: all 0.2s ease-in-out;
+        }
+        
+        .cell.alive {
+            background-color: #3498db;
+        }
+        
+        .cell.dead {
+            background-color: transparent;
+        }
+        
+        .instructions {
+            padding: 15px 20px;
+            background-color: #f8f9fa;
+            font-size: 14px;
+            color: #777;
+            border-top: 1px solid #eaeaea;
+        }
+        
+        .status {
+            display: flex;
+            align-items: center;
+            padding: 0 20px;
+            background-color: rgba(255, 255, 255, 0.8);
+            border-top: 1px solid #eaeaea;
+            font-size: 14px;
+        }
+        
+        .status-text {
+            margin-left: 8px;
+            white-space: nowrap;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Conway's Game of Life</h1>
+            <p>A classic cellular automaton simulation</p>
+        </header>
+
+        <div class="controls">
+            <div class="control-group">
+                <label for="speed">Speed:</label>
+                <input type="range" id="speed" min="50" max="1000" value="300">
+                <span id="speed-display">300</span> ms
+            </div>
+            
+            <div class="control-group">
+                <button id="reset-btn">Reset Grid</button>
+                <button id="play-pause-btn">Play/Pause</button>
+            </div>
+        </div>
+
+        <div class="canvas-container">
+            <div id="game-board"></div>
+        </div>
+
+        <div class="instructions">
+            <p>Click cells to toggle them on/off. Press Play to start the simulation.</p>
+            <p><strong>Rules:</strong> Any live cell with fewer than two live neighbors dies (underpopulation). Any live cell with two or three live neighbors survives. Any live cell with more than three live neighbors dies (overpopulation). Any dead cell with exactly three live neighbors becomes a live cell.</p>
+        </div>
+
+        <div class="status">
+            <span id="status">Ready to play</span>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // DOM elements
+            const gameBoard = document.getElementById('game-board');
+            const resetBtn = document.getElementById('reset-btn');
+            const playPauseBtn = document.getElementById('play-pause-btn');
+            const speedSlider = document.getElementById('speed');
+            const speedDisplay = document.getElementById('speed-display');
+            
+            // Game state
+            let grid = [];
+            let running = false;
+            let lastUpdate = 0;
+            const cellSize = 10;
+            const cellCountX = 64;
+            const cellCountY = 48;
+            const cellWidth = gameBoard.offsetWidth / cellCountX - 2;
+            const cellHeight = gameBoard.offsetHeight / cellCountY - 2;
+            
+            // Initialize the grid
+            function initGrid() {
+                grid = Array.from({ length: cellCountY }, () => 
+                    Array.from({ length: cellCountX }, () => false)
+                );
+                
+                // Add cells to DOM
+                for (let y = 0; y < cellCountY; y++) {
+                    for (let x = 0; x < cellCountX; x++) {
+                        const cellEl = document.createElement('div');
+                        cellEl.className = 'cell';
+                        cellEl.dataset.x = x;
+                        cellEl.dataset.y = y;
+                        
+                        // Position the cell
+                        cellEl.style.left = `${x * (cellSize + 1)}px`;
+                        cellEl.style.top = `${y * (cellSize + 1)}px`;
+                        
+                        gameBoard.appendChild(cellEl);
+                    }
+                }
+                
+                // Start with random cells
+                for (let y = 0; y < cellCountY; y++) {
+                    for (let x = 0; x < cellCountX; x++) {
+                        if (Math.random() > 0.7) {
+                            grid[y][x] = true;
+                            document.querySelector(`.cell[data-x="${x}"][data-y="${y}"]`).classList.add('alive');
+                        }
+                    }
+                }
+            }
+
+            // Update the display based on grid state
+            function updateDisplay() {
+                for (let y = 0; y < cellCountY; y++) {
+                    for (let x = 0; x < cellCountX; x++) {
+                        const cellEl = document.querySelector(`.cell[data-x="${x}"][data-y="${y}"]`);
+                        
+                        if (grid[y][x]) {
+                            cellEl.classList.add('alive');
+                            cellEl.classList.remove('dead');
+                        } else {
+                            cellEl.classList.remove('alive');
+                            cellEl.classList.add('dead');
+                        }
+                    }
+                }
+            }
+
+            // Main game logic
+            function update() {
+                const now = Date.now();
+                
+                // Calculate neighbors for each cell
+                const nextGrid = Array.from({ length: cellCountY }, () => 
+                    Array.from({ length: cellCountX }, () => false)
+                );
+                
+                for (let y = 0; y < cellCountY; y++) {
+                    for (let x = 0; x < cellCountX; x++) {
+                        const count = countNeighbors(x, y);
+                        
+                        if (grid[y][x]) {
+                            // Survive
+                            if (count === 2 || count === 3) {
+                                nextGrid[y][x] = true;
+                            }
+                        } else {
+                            // Become alive
+                            if (count === 3) {
+                                nextGrid[y][x] = true;
+                            }
+                        }
+                    }
+                }
+                
+                // Update grid and display
+                grid = nextGrid;
+                updateDisplay();
+                
+                // Continue or stop the simulation
+                if (running && !gameBoard.classList.contains('paused')) {
+                    requestAnimationFrame(update);
+                }
+            }
+
+            function countNeighbors(x, y) {
+                let count = 0;
+                const directions = [
+                    [-1, -1], [-1, 0], [-1, 1],
+                    [0, -1],           [0, 1],
+                    [1, -1],  [1, 0],  [1, 1]
+                ];
+                
+                for (const [dx, dy] of directions) {
+                    const nx = x + dx;
+                    const ny = y + dy;
+                    
+                    if (nx >= 0 && nx < cellCountX && ny >= 0 && ny < cellCountY) {
+                        if (grid[ny][nx]) {
+                            count++;
+                        }
+                    }
+                }
+                
+                return count;
+            }
+
+            // Event listeners
+            resetBtn.addEventListener('click', initGrid);
+            playPauseBtn.addEventListener('click', () => {
+                running = !running;
+                gameBoard.classList.toggle('paused', !running);
+                playPauseBtn.textContent = running ? 'Pause' : 'Play';
+                
+                // Update status message
+                const statusText = document.getElementById('status');
+                if (running) {
+                    statusText.innerHTML = '<span style="color:#27ae60;">Playing...</span> &nbsp;' +
+                                         '<button id="reset-btn">Reset Grid</button>';
+                } else {
+                    statusText.innerHTML = 'Paused. Click <strong>Play</strong> to resume.';
+                }
+            });
+            
+            speedSlider.addEventListener('input', function() {
+                const value = this.value;
+                speedDisplay.textContent = `${value} ms`;
+                
+                // Save speed for later
+                localStorage.setItem('game-speed', value);
+            });
+            
+            // Initialize the game
+            initGrid();
+            
+            // Set saved speed if available
+            const savedSpeed = localStorage.getItem('game-speed');
+            if (savedSpeed) {
+                speedSlider.value = savedSpeed;
+                speedDisplay.textContent = `${savedSpeed} ms`;
+            }
+        });
+    </script>
+</body>
+</html>

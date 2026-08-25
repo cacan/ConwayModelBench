@@ -1,0 +1,426 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D Neon Game of Life</title>
+    <style>
+        body { margin: 0; overflow: hidden; background-color: #050505; font-family: sans-serif; }
+        #canvas-container { width: 100vw; height: 100vh; }
+        
+        .ui {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            color: white;
+            pointer-events: none; /* Let clicks pass through to canvas */
+            z-index: 10;
+        }
+        
+        h1 { margin: 0; font-size: 1.5rem; text-transform: uppercase; letter-spacing: 3px; text-shadow: 0 0 10px rgba(0,255,255,0.5); }
+        p { margin: 5px 0 0 0; font-size: 0.8rem; color: #aaa; }
+        
+        .controls {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 10px;
+            pointer-events: auto;
+            background: rgba(0,0,0,0.5);
+            padding: 10px;
+            border-radius: 30px;
+            backdrop-filter: blur(5px);
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+
+        button {
+            background: transparent;
+            border: 1px solid rgba(255,255,255,0.3);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 20px;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-size: 0.8rem;
+            text-transform: uppercase;
+        }
+
+        button:hover { background: rgba(255,255,255,0.1); border-color: white; }
+        button.active { background: #00ffff; color: black; border-color: #00ffff; box-shadow: 0 0 15px #00ffff; }
+
+        /* Loading Overlay */
+        #loader {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: #000; display: flex; justify-content: center; align-items: center;
+            color: #00ffff; z-index: 100; transition: opacity 0.5s;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="loader">Loading 3D Engine...</div>
+
+    <div class="ui">
+        <h1>Neon Life</h1>
+        <p>Left Click: Draw | Right Click: Rotate | Scroll: Zoom</p>
+    </div>
+
+    <div class="controls">
+        <button id="startBtn">Start</button>
+        <button id="stepBtn">Step</button>
+        <button id="randomBtn">Randomize</button>
+        <button id="clearBtn">Clear</button>
+    </div>
+
+    <div id="canvas-container"></div>
+
+    <!-- Import Three.js as ES Modules -->
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+                "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+            }
+        }
+    </script>
+
+    <script type="module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+        import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+        import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+        import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+
+        // --- Configuration ---
+        const GRID_SIZE = 60; // 60x60 grid
+        const CUBE_SIZE = 0.8;
+        const GAP = 0.1;
+        const ANIMATION_SPEED = 0.1; // 0.0 to 1.0 (Lerp speed)
+
+        // --- State ---
+        let isRunning = false;
+        let generation = 0;
+        let grid = []; // 2D array
+        let nextGrid = [];
+        
+        // --- Three.js Globals ---
+        let scene, camera, renderer, composer, controls;
+        let mesh; // InstancedMesh
+        let dummy = new THREE.Object3D();
+        let raycaster = new THREE.Raycaster();
+        let mouse = new THREE.Vector2();
+        let isMouseDown = false;
+        
+        // Colors
+        const COLOR_OFF = new THREE.Color(0x111111);
+        const COLOR_ON = new THREE.Color(0x00ffff); // Cyan
+        const COLOR_ON_2 = new THREE.Color(0xff00ff); // Magenta
+
+        // --- Initialization ---
+        function init() {
+            // 1. Scene Setup
+            scene = new THREE.Scene();
+            scene.fog = new THREE.FogExp2(0x000000, 0.035);
+
+            // 2. Camera
+            camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
+            camera.position.set(0, 40, 40);
+            camera.lookAt(0, 0, 0);
+
+            // 3. Renderer
+            renderer = new THREE.WebGLRenderer({ antialias: false, powerPreference: "high-performance" });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            renderer.toneMapping = THREE.ReinhardToneMapping;
+            document.getElementById('canvas-container').appendChild(renderer.domElement);
+
+            // 4. Post-Processing (Bloom)
+            const renderScene = new RenderPass(scene, camera);
+            const bloomPass = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 1.5, 0.4, 0.85);
+            bloomPass.threshold = 0;
+            bloomPass.strength = 1.2; // Intensity of glow
+            bloomPass.radius = 0.5;
+
+            composer = new EffectComposer(renderer);
+            composer.addPass(renderScene);
+            composer.addPass(bloomPass);
+
+            // 5. Controls
+            controls = new OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true;
+            controls.dampingFactor = 0.05;
+            controls.maxPolarAngle = Math.PI / 2 - 0.1; // Don't go below ground
+            controls.minDistance = 10;
+            controls.maxDistance = 100;
+
+            // 6. Lighting
+            const ambientLight = new THREE.AmbientLight(0x404040);
+            scene.add(ambientLight);
+            
+            const pointLight = new THREE.PointLight(0xffffff, 1, 100);
+            pointLight.position.set(0, 20, 0);
+            scene.add(pointLight);
+
+            // 7. Create Grid
+            createGrid();
+
+            // 8. Event Listeners
+            window.addEventListener('resize', onWindowResize);
+            window.addEventListener('mousedown', onMouseDown);
+            window.addEventListener('mouseup', onMouseUp);
+            window.addEventListener('mousemove', onMouseMove);
+            
+            // UI Listeners
+            document.getElementById('startBtn').addEventListener('click', togglePlay);
+            document.getElementById('stepBtn').addEventListener('click', () => { isRunning = false; updateGame(); });
+            document.getElementById('randomBtn').addEventListener('click', randomizeGrid);
+            document.getElementById('clearBtn').addEventListener('click', clearGrid);
+
+            // Remove Loader
+            document.getElementById('loader').style.opacity = 0;
+            setTimeout(() => document.getElementById('loader').remove(), 500);
+
+            // Start Loop
+            animate();
+        }
+
+        function createGrid() {
+            // Calculate total instances
+            const count = GRID_SIZE * GRID_SIZE;
+            
+            // Geometry
+            const geometry = new THREE.BoxGeometry(CUBE_SIZE, 1, CUBE_SIZE);
+            // Shift geometry so pivot is at the bottom
+            geometry.translate(0, 0.5, 0); 
+
+            // Material
+            const material = new THREE.MeshStandardMaterial({
+                color: 0x000000,
+                roughness: 0.1,
+                metalness: 0.8,
+                emissive: 0x000000
+            });
+
+            mesh = new THREE.InstancedMesh(geometry, material, count);
+            mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+            scene.add(mesh);
+
+            // Initialize Logic Grid
+            grid = new Array(GRID_SIZE).fill(null).map(() => new Array(GRID_SIZE).fill(0));
+            nextGrid = new Array(GRID_SIZE).fill(null).map(() => new Array(GRID_SIZE).fill(0));
+            
+            randomizeGrid();
+        }
+
+        function randomizeGrid() {
+            generation = 0;
+            for (let i = 0; i < GRID_SIZE; i++) {
+                for (let j = 0; j < GRID_SIZE; j++) {
+                    grid[i][j] = Math.random() > 0.85 ? 1 : 0; // Sparse population looks cooler
+                }
+            }
+            updateVisuals();
+        }
+
+        function clearGrid() {
+            generation = 0;
+            for (let i = 0; i < GRID_SIZE; i++) {
+                for (let j = 0; j < GRID_SIZE; j++) {
+                    grid[i][j] = 0;
+                }
+            }
+            updateVisuals();
+        }
+
+        // --- Core Logic ---
+
+        function computeNextGen() {
+            for (let i = 0; i < GRID_SIZE; i++) {
+                for (let j = 0; j < GRID_SIZE; j++) {
+                    const state = grid[i][j];
+                    const neighbors = countNeighbors(i, j);
+
+                    if (state === 0 && neighbors === 3) {
+                        nextGrid[i][j] = 1;
+                    } else if (state === 1 && (neighbors < 2 || neighbors > 3)) {
+                        nextGrid[i][j] = 0;
+                    } else {
+                        nextGrid[i][j] = state;
+                    }
+                }
+            }
+
+            // Swap arrays
+            let temp = grid;
+            grid = nextGrid;
+            nextGrid = temp;
+            
+            generation++;
+        }
+
+        function countNeighbors(x, y) {
+            let sum = 0;
+            for (let i = -1; i < 2; i++) {
+                for (let j = -1; j < 2; j++) {
+                    if (i === 0 && j === 0) continue;
+                    
+                    // Wrap around (Toroidal)
+                    let col = (x + i + GRID_SIZE) % GRID_SIZE;
+                    let row = (y + j + GRID_SIZE) % GRID_SIZE;
+                    
+                    sum += grid[col][row];
+                }
+            }
+            return sum;
+        }
+
+        function updateGame() {
+            computeNextGen();
+            updateVisuals();
+        }
+
+        // --- Visual Updates (The "Wow" part) ---
+
+        function updateVisuals() {
+            let i = 0;
+            for (let x = 0; x < GRID_SIZE; x++) {
+                for (let z = 0; z < GRID_SIZE; z++) {
+                    const state = grid[x][z];
+                    
+                    // Position
+                    dummy.position.set(
+                        (x - GRID_SIZE / 2) * (CUBE_SIZE + GAP),
+                        0,
+                        (z - GRID_SIZE / 2) * (CUBE_SIZE + GAP)
+                    );
+
+                    // Scale (Lerp target)
+                    const targetScale = state === 1 ? 1.0 : 0.05;
+                    // We don't change scale directly here, we do it in animate() for smoothness
+                    // But we need to store the target scale in the instance data or a separate array
+                    // For simplicity in this demo, we will just set the scale in the animate loop
+                    // But we need to know the target.
+                    
+                    // Color
+                    const color = state === 1 ? (Math.random() > 0.5 ? COLOR_ON : COLOR_ON_2) : COLOR_OFF;
+                    mesh.setColorAt(i, color);
+
+                    dummy.updateMatrix();
+                    mesh.setMatrixAt(i, dummy.matrix);
+
+                    i++;
+                }
+            }
+            mesh.instanceMatrix.needsUpdate = true;
+            mesh.instanceColor.needsUpdate = true;
+        }
+
+        // --- Animation Loop ---
+
+        function animate() {
+            requestAnimationFrame(animate);
+
+            // Game Loop
+            if (isRunning) {
+                updateGame();
+            }
+
+            // Smooth Animation of Cubes
+            let i = 0;
+            for (let x = 0; x < GRID_SIZE; x++) {
+                for (let z = 0; z < GRID_SIZE; z++) {
+                    const state = grid[x][z];
+                    const targetScale = state === 1 ? 1.0 : 0.05;
+                    
+                    // Get current scale (default 1)
+                    dummy.scale.set(1, 1, 1);
+                    mesh.getMatrixAt(i, dummy.matrix);
+                    dummy.matrix.decompose(dummy.position, dummy.quaternion, dummy.scale);
+
+                    // Lerp current scale to target
+                    dummy.scale.y = THREE.MathUtils.lerp(dummy.scale.y, targetScale, ANIMATION_SPEED);
+                    
+                    dummy.updateMatrix();
+                    mesh.setMatrixAt(i, dummy.matrix);
+                    i++;
+                }
+            }
+            mesh.instanceMatrix.needsUpdate = true;
+
+            controls.update();
+            composer.render();
+        }
+
+        // --- Interaction ---
+
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            composer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+        function onMouseDown(event) {
+            if (event.button !== 0) return; // Only left click
+            isMouseDown = true;
+            handleInteraction(event);
+        }
+
+        function onMouseUp() {
+            isMouseDown = false;
+        }
+
+        function onMouseMove(event) {
+            if (isMouseDown) {
+                handleInteraction(event);
+            }
+        }
+
+        function handleInteraction(event) {
+            // Calculate mouse position in normalized device coordinates (-1 to +1)
+            mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+            mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+
+            raycaster.setFromCamera(mouse, camera);
+
+            // Create a plane at y=0 to raycast against for easier grid mapping
+            const planeGeometry = new THREE.PlaneGeometry(GRID_SIZE * (CUBE_SIZE+GAP), GRID_SIZE * (CUBE_SIZE+GAP));
+            const planeMaterial = new THREE.MeshBasicMaterial({ visible: false });
+            const plane = new THREE.Mesh(planeGeometry, planeMaterial);
+            plane.rotation.x = -Math.PI / 2;
+            scene.add(plane);
+
+            const intersects = raycaster.intersectObject(plane);
+
+            if (intersects.length > 0) {
+                const point = intersects[0].point;
+                
+                // Convert world position to grid index
+                // Center is (0,0,0)
+                const gridX = Math.round(point.x / (CUBE_SIZE + GAP) + GRID_SIZE / 2);
+                const gridZ = Math.round(point.z / (CUBE_SIZE + GAP) + GRID_SIZE / 2);
+
+                if (gridX >= 0 && gridX < GRID_SIZE && gridZ >= 0 && gridZ < GRID_SIZE) {
+                    grid[gridX][gridZ] = 1; // Draw cell
+                    updateVisuals();
+                }
+            }
+            
+            scene.remove(plane);
+        }
+
+        function togglePlay() {
+            isRunning = !isRunning;
+            const btn = document.getElementById('startBtn');
+            btn.innerText = isRunning ? "Pause" : "Start";
+            btn.classList.toggle('active');
+        }
+
+        // Start
+        init();
+
+    </script>
+</body>
+</html>

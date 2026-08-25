@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Conway's Game of Life</title>
+    <style>
+        body {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin: 20px;
+            font-family: Arial, sans-serif;
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+        }
+        canvas {
+            border: 1px solid #000;
+            background-color: #f0f0f0;
+            margin: 10px 0;
+        }
+        button {
+            margin: 5px;
+            padding: 8px 15px;
+            font-size: 14px;
+            cursor: pointer;
+            border: none;
+            border-radius: 4px;
+            background-color: #4CAF50;
+            color: white;
+            transition: background-color 0.3s;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        button:active {
+            background-color: #3e8e41;
+        }
+        .controls {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+        }
+        .instructions {
+            text-align: center;
+            margin-top: 10px;
+            color: #666;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Conway's Game of Life</h1>
+    <canvas id="game" width="500" height="500"></canvas>
+    <div class="controls">
+        <button id="start">Start</button>
+        <button id="reset">Reset</button>
+        <button id="random">Random Pattern</button>
+    </div>
+    <div class="instructions">
+        Click "Start" to begin the simulation. Click "Reset" to clear the grid. Click "Random Pattern" to generate a random starting configuration.
+    </div>
+
+    <script>
+        // Game constants
+        const ROWS = 50;
+        const COLS = 50;
+        const CELL_SIZE = 10;
+        
+        // Initialize grid
+        let grid = Array(ROWS).fill(0).map(() => Array(COLS).fill(0));
+        let running = false;
+        let animationId = null;
+        const canvas = document.getElementById('game');
+        const ctx = canvas.getContext('2d');
+
+        // Draw the grid
+        function drawGrid() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            for (let row = 0; row < ROWS; row++) {
+                for (let col = 0; col < COLS; col++) {
+                    const x = col * CELL_SIZE;
+                    const y = row * CELL_SIZE;
+                    const cell = grid[row][col];
+                    
+                    if (cell) {
+                        ctx.fillStyle = '#00ff00';
+                    } else {
+                        ctx.fillStyle = '#ffffff';
+                    }
+                    ctx.fillRect(x, y, CELL_SIZE, CELL_SIZE);
+                }
+            }
+        }
+
+        // Count live neighbors
+        function countNeighbors(row, col) {
+            let count = 0;
+            for (let i = -1; i <= 1; i++) {
+                for (let j = -1; j <= 1; j++) {
+                    if (i === 0 && j === 0) continue;
+                    const nr = row + i;
+                    const nc = col + j;
+                    if (nr >= 0 && nr < ROWS && nc >= 0 && nc < COLS) {
+                        count += grid[nr][nc];
+                    }
+                }
+            }
+            return count;
+        }
+
+        // Update the grid
+        function updateGrid() {
+            const nextGrid = Array(ROWS).fill(0).map(() => Array(COLS).fill(0));
+            
+            for (let row = 0; row < ROWS; row++) {
+                for (let col = 0; col < COLS; col++) {
+                    const neighbors = countNeighbors(row, col);
+                    const cell = grid[row][col];
+                    
+                    if (cell) {
+                        if (neighbors === 2 || neighbors === 3) {
+                            nextGrid[row][col] = 1;
+                        } else {
+                            nextGrid[row][col] = 0;
+                        }
+                    } else {
+                        if (neighbors === 3) {
+                            nextGrid[row][col] = 1;
+                        } else {
+                            nextGrid[row][col] = 0;
+                        }
+                    }
+                }
+            }
+            grid = nextGrid;
+        }
+
+        // Start simulation
+        function startSimulation() {
+            if (running) return;
+            running = true;
+            
+            const tick = () => {
+                updateGrid();
+                drawGrid();
+                if (running) {
+                    animationId = requestAnimationFrame(tick);
+                }
+            };
+            
+            tick();
+        }
+
+        // Reset grid
+        function resetGrid() {
+            grid = Array(ROWS).fill(0).map(() => Array(COLS).fill(0));
+            drawGrid();
+        }
+
+        // Generate random pattern
+        function randomPattern() {
+            grid = Array(ROWS).fill(0).map(() => {
+                return Array(COLS).fill(0).map(() => Math.random() > 0.6 ? 1 : 0);
+            });
+            drawGrid();
+        }
+
+        // Event listeners
+        document.getElementById('start').addEventListener('click', () => {
+            if (running) {
+                running = false;
+                cancelAnimationFrame(animationId);
+            } else {
+                startSimulation();
+            }
+        });
+
+        document.getElementById('reset').addEventListener('click', resetGrid);
+        document.getElementById('random').addEventListener('click', randomPattern);
+
+        // Initial draw
+        drawGrid();
+    </script>
+</body>
+</html>
