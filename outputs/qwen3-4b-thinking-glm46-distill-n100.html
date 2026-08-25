@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Conway's Game of Life</title>
+  <style>
+    body {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      font-family: "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, "Open Sans", "Helvetica Neue", Arial, sans-serif;
+      background-color: #0f172a;
+      color: #e5e7eb;
+    }
+
+    h1 {
+      margin-bottom: 8px;
+    }
+
+    .controls {
+      display: flex;
+      gap: 16px;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+
+    button {
+      padding: 10px 14px;
+      font-size: 14px;
+      border: none;
+      background-color: #3b82f6;
+      color: white;
+      cursor: pointer;
+      border-radius: 6px;
+      transition: background-color 0.2s ease;
+    }
+
+    button:hover {
+      background-color: #2563eb;
+    }
+
+    .clear-btn {
+      background-color: #dc2626;
+    }
+
+    .grid-container {
+      display: grid;
+      gap: 1px;
+      border: 1px solid rgba(255, 255, 255, 0.07);
+      box-shadow: 0 4px 18px rgba(0, 0, 0, 0.3);
+    }
+
+    .grid-cell {
+      width: 16px;
+      height: 16px;
+      background-color: #0f172a;
+      transition: background-color 0.1s ease;
+      position: relative;
+    }
+
+    .live {
+      background-color: #3b82f6;
+    }
+
+    .info {
+      margin-top: 14px;
+      font-size: 13px;
+      color: #9ca3af;
+      max-width: 500px;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>Conway's Game of Life</h1>
+
+  <div class="controls">
+    <button id="toggle-button">Start / Pause</button>
+    <button id="clear-button" class="clear-btn">Clear Board</button>
+    <label for="cell-size">Cell Size:</label>
+    <input type="range" min="6" max="30" value="12" id="cell-size" />
+  </div>
+
+  <div id="grid"></div>
+
+  <div class="info">
+    Use left/right arrow keys to move, and spacebar to toggle a cell. Press start/pause to begin the simulation.
+  </div>
+
+  <script>
+    const CELL_SIZE = document.getElementById("cell-size");
+    let board;
+    let isRunning = false;
+
+    function createBoard(width, height) {
+      return Array.from({ length: height }, () => Array(width).fill(0));
+    }
+
+    function render(board, width, height) {
+      const container = document.getElementById("grid");
+      container.innerHTML = "";
+
+      for (let y = 0; y < height; y++) {
+        for (let x = 0; x < width; x++) {
+          const cell = document.createElement("div");
+          cell.classList.add("grid-cell");
+
+          if (board[y][x] === 1) {
+            cell.classList.add("live");
+          }
+
+          container.appendChild(cell);
+        }
+      }
+    }
+
+    function countNeighbors(y, x) {
+      let neighbors = 0;
+      const height = board.length;
+      const width = board[0].length;
+
+      for (let dy = -1; dy <= 1; dy++) {
+        for (let dx = -1; dx <= 1; dx++) {
+          if (dy === 0 && dx === 0) continue;
+          let nx = x + dx;
+          let ny = y + dy;
+
+          if (nx >= 0 && nx < width && ny >= 0 && ny < height) {
+            neighbors += board[ny][nx];
+          }
+        }
+      }
+
+      return neighbors;
+    }
+
+    function nextGeneration() {
+      const newBoard = createBoard(board.length, board[0].length);
+      for (let y = 0; y < board.length; y++) {
+        for (let x = 0; x < board[y].length; x++) {
+          let neighbors = countNeighbors(y, x);
+
+          if (board[y][x] === 1) {
+            newBoard[y][x] = neighbors === 2 || neighbors === 3 ? 1 : 0;
+          } else {
+            newBoard[y][x] = neighbors === 3 ? 1 : 0;
+          }
+        }
+      }
+
+      board = newBoard;
+    }
+
+    function startSimulation() {
+      isRunning = true;
+      const interval = setInterval(() => {
+        nextGeneration();
+        render(board, board[0].length, board.length);
+      }, 50);
+
+      document.getElementById("toggle-button").textContent = "Pause";
+    }
+
+    function stopSimulation() {
+      clearInterval(window.intervalId);
+      isRunning = false;
+      document.getElementById("toggle-button").textContent = "Start / Pause";
+    }
+
+    function handleKeyDown(event) {
+      if (event.key === "ArrowLeft") {
+        move(-1, 0);
+      } else if (event.key === "ArrowRight") {
+        move(1, 0);
+      } else if (event.key === " ") {
+        toggleCell();
+      }
+    }
+
+    function handleResize(event) {
+      const container = document.getElementById("grid");
+      const width = Math.floor(container.clientWidth / parseInt(CELL_SIZE.value));
+      const height = Math.floor(container.clientHeight / parseInt(CELL_SIZE.value));
+
+      board = createBoard(width, height);
+      render(board, width, height);
+
+      // Adjust the size
+      CELL_SIZE.value = width.toString();
+    }
+
+    function move(dx, dy) {
+      if (!board) return;
+
+      let y = 0;
+      while (y < board.length && !board[y].find((cell) => cell === 1)) y++;
+      let x = 0;
+      while (x < board[0].length && !board[y][x]) x++;
+
+      let ny = y + dy;
+      let nx = x + dx;
+
+      if (ny >= 0 && ny < board.length && nx >= 0 && nx < board[0].length) {
+        const cell = document.getElementById("grid").children[ny * board[0].length + nx];
+        if (!cell.classList.contains("live")) {
+          cell.classList.add("live");
+        }
+      } else if (y > 0 || x > 0) {
+        // Move to the next live cell
+        y += dy;
+        while (y >= 0 && y < board.length && !board[y].find((cell) => cell === 1)) y++;
+        if (y < 0) y = 0;
+      }
+    }
+
+    function toggleCell() {
+      const container = document.getElementById("grid");
+      const width = parseInt(CELL_SIZE.value);
+      let x = 0, y = 0;
+
+      while (x < board[0].length && !board[y][x]) x++;
+      if (x === board[0].length) {
+        y += 1;
+        while (y >= 0 && y < board.length && !board[y].find((cell) => cell === 1)) y++;
+        if (y > board.length - 1) y = board.length - 1;
+      }
+
+      const cell = container.children[y * width + x];
+      cell.classList.toggle("live");
+    }
+
+    function clearBoard() {
+      document.getElementById("grid").innerHTML = "";
+      board = createBoard(30, 20); // Default size
+      render(board, 30, 20);
+    }
+
+    window.addEventListener("load", () => {
+      document.getElementById("toggle-button").addEventListener("click", () => {
+        if (isRunning) {
+          stopSimulation();
+        } else {
+          startSimulation();
+        }
+      });
+
+      document.getElementById("clear-button").addEventListener("click", clearBoard);
+
+      document.addEventListener("keydown", handleKeyDown);
+      window.addEventListener("resize", handleResize);
+      handleResize();
+
+      // Preload any initial patterns
+      setTimeout(() => {
+        const initial = [
+          [1, 0, 0, 0],
+          [0, 1, 1, 0],
+          [0, 1, 1, 0],
+          [0, 0, 0, 0]
+        ];
+
+        if (board.length > 4 && board[0].length > 3) {
+          for (let y = 0; y < initial.length; y++) {
+            for (let x = 0; x < initial[y].length; x++) {
+              const nx = x + board[0].length - 4;
+              const ny = y + board.length - 4;
+
+              if (nx >= 0 && nx < board[0].length && ny >= 0 && ny < board.length) {
+                board[ny][nx] = initial[y][x];
+              }
+            }
+          }
+        }
+
+        render(board, board[0].length, board.length);
+      }, 500);
+    });
+  </script>
+</body>
+</html>

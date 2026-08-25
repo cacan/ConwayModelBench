@@ -1,0 +1,535 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D Game of Life - Three.js</title>
+    <style>
+        :root {
+            --bg-color: #050505;
+            --panel-bg: rgba(20, 20, 20, 0.8);
+            --primary: #00f3ff; /* Cyan Neon */
+            --secondary: #bc13fe; /* Purple Neon */
+            --text-color: #ffffff;
+        }
+
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: var(--bg-color);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            color: var(--text-color);
+        }
+
+        canvas {
+            display: block;
+            outline: none;
+        }
+
+        /* UI Overlay */
+        #ui-container {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            width: 300px;
+            background: var(--panel-bg);
+            backdrop-filter: blur(15px);
+            padding: 20px;
+            border-radius: 16px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+            z-index: 10;
+        }
+
+        h1 {
+            margin: 0 0 15px 0;
+            font-size: 1.5rem;
+            background: linear-gradient(to right, var(--primary), var(--secondary));
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+            letter-spacing: 1px;
+        }
+
+        .control-group {
+            margin-bottom: 15px;
+        }
+
+        label {
+            display: block;
+            font-size: 0.8rem;
+            color: #aaa;
+            margin-bottom: 5px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        input[type="range"] {
+            width: 100%;
+            -webkit-appearance: none;
+            background: rgba(255,255,255,0.1);
+            height: 4px;
+            border-radius: 2px;
+            outline: none;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 16px;
+            height: 16px;
+            background: var(--primary);
+            border-radius: 50%;
+            cursor: pointer;
+            box-shadow: 0 0 10px var(--primary);
+        }
+
+        .btn-row {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        button {
+            flex: 1;
+            padding: 10px;
+            border: none;
+            border-radius: 8px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            font-size: 0.75rem;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--primary), #00a8ff);
+            color: white;
+            box-shadow: 0 4px 15px rgba(0, 243, 255, 0.3);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0, 243, 255, 0.5);
+        }
+
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .btn-secondary:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        /* Stats */
+        #stats {
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            font-family: 'Courier New', monospace;
+            font-size: 0.8rem;
+        }
+
+        .stat-line {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 4px;
+        }
+
+        .stat-value {
+            color: var(--primary);
+            font-weight: bold;
+        }
+
+        /* Loading Overlay */
+        #loader {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: var(--bg-color);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+            transition: opacity 0.5s ease;
+        }
+
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 3px solid rgba(255,255,255,0.1);
+            border-top-color: var(--primary);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin { to { transform: rotate(360deg); } }
+    </style>
+</head>
+<body>
+
+    <!-- Loading Screen -->
+    <div id="loader">
+        <div class="spinner"></div>
+    </div>
+
+    <!-- UI Panel -->
+    <div id="ui-container">
+        <h1>G.O.L. 3D</h1>
+        
+        <div class="control-group">
+            <label for="speedRange">Simulation Speed</label>
+            <input type="range" id="speedRange" min="0" max="20" value="5">
+        </div>
+
+        <div class="control-group">
+            <label for="gridSizeRange">Grid Size (X/Y)</label>
+            <input type="range" id="gridSizeRange" min="10" max="60" value="30">
+        </div>
+
+        <div class="btn-row">
+            <button id="btn-start" class="btn-primary">Start</button>
+            <button id="btn-random" class="btn-secondary">Randomize</button>
+            <button id="btn-clear" class="btn-secondary">Clear</button>
+        </div>
+
+        <div id="stats">
+            <div class="stat-line"><span>Generation:</span> <span id="gen-count" class="stat-value">0</span></div>
+            <div class="stat-line"><span>Alive Cells:</span> <span id="alive-count" class="stat-value">0</span></div>
+        </div>
+    </div>
+
+    <!-- Three.js Library -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+
+    <script>
+        // --- Configuration ---
+        const CONFIG = {
+            cellSize: 0.6,      // Size of each cube
+            gap: 0.05,          // Gap between cells
+            initialGrid: 30,    // Initial grid size (X/Y)
+            colors: {
+                alive: new THREE.Color('#00f3ff'),
+                dead: new THREE.Color(0x222222),
+                glow: new THREE.Color('#bc13fe')
+            }
+        };
+
+        // --- Global Variables ---
+        let scene, camera, renderer, controls;
+        let grid = [];          // 2D array storing cell states (0 or 1)
+        let cellsMeshes = [];   // Array of Mesh objects for rendering
+        let isRunning = false;
+        let generation = 0;
+        let speed = 5;
+        
+        // Animation Loop Variables
+        let lastTime = 0;
+        let accumulator = 0;
+
+        // --- Initialization ---
+        function init() {
+            // 1. Scene Setup
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x050505);
+            
+            // Fog for depth perception
+            scene.fog = new THREE.FogExp2(0x050505, 0.03);
+
+            // 2. Camera Setup
+            const aspect = window.innerWidth / window.innerHeight;
+            camera = new THREE.PerspectiveCamera(60, aspect, 0.1, 1000);
+            
+            // Position camera for a nice isometric-like view
+            const gridDim = CONFIG.initialGrid * CONFIG.cellSize + (CONFIG.initialGrid - 1) * CONFIG.gap;
+            camera.position.set(gridDim / 2, gridDim * 1.5, gridDim * 1.8);
+            camera.lookAt(0, 0, 0);
+
+            // 3. Renderer Setup
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            document.body.appendChild(renderer.domElement);
+
+            // 4. Controls (Orbit)
+            controls = new THREE.OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true;
+            controls.dampingFactor = 0.05;
+            controls.minDistance = gridDim / 2;
+            controls.maxDistance = gridDim * 3;
+
+            // 5. Lighting
+            const ambientLight = new THREE.AmbientLight(0x404040, 1.5); // Soft white light
+            scene.add(ambientLight);
+
+            const pointLight = new THREE.PointLight(CONFIG.colors.alive, 2, 50);
+            pointLight.position.set(10, 10, 10);
+            scene.add(pointLight);
+
+            const rimLight = new THREE.DirectionalLight(0xffffff, 1);
+            rimLight.position.set(-10, -10, -10);
+            scene.add(rimLight);
+
+            // 6. Create Grid
+            createGrid();
+
+            // 7. Event Listeners
+            window.addEventListener('resize', onWindowResize);
+            
+            // UI Bindings
+            document.getElementById('btn-start').addEventListener('click', toggleGame);
+            document.getElementById('btn-random').addEventListener('click', randomizeGrid);
+            document.getElementById('btn-clear').addEventListener('click', clearGrid);
+            
+            const speedInput = document.getElementById('speedRange');
+            speedInput.addEventListener('input', (e) => {
+                speed = parseInt(e.target.value);
+            });
+
+            const sizeInput = document.getElementById('gridSizeRange');
+            sizeInput.addEventListener('change', resizeGrid);
+
+            // Hide loader
+            setTimeout(() => {
+                document.getElementById('loader').style.opacity = 0;
+                setTimeout(() => document.getElementById('loader').remove(), 500);
+            }, 100);
+
+            animate();
+        }
+
+        // --- Grid Management ---
+
+        function createGrid() {
+            const size = CONFIG.initialGrid;
+            
+            // Clear existing meshes if any
+            cellsMeshes.forEach(m => scene.remove(m));
+            cellsMeshes = [];
+
+            // Create Geometry for a single cell (optimized)
+            const geometry = new THREE.BoxGeometry(CONFIG.cellSize, CONFIG.cellSize, CONFIG.cellSize);
+            
+            // Material that changes color based on state
+            const material = new THREE.MeshStandardMaterial({ 
+                color: CONFIG.colors.dead,
+                roughness: 0.2,
+                metalness: 0.1
+            });
+
+            for (let x = 0; x < size; x++) {
+                grid[x] = []; // Initialize row
+                
+                for (let z = 0; z < size; z++) {
+                    const cellState = Math.random() > 0.8 ? 1 : 0; // Random start
+                    
+                    // Create Mesh
+                    const mesh = new THREE.Mesh(geometry, material.clone());
+                    
+                    // Position calculation with gaps
+                    const posX = (x * CONFIG.cellSize) + ((x - size/2) * CONFIG.gap);
+                    const posZ = (z * CONFIG.cellSize) + ((z - size/2) * CONFIG.gap);
+                    
+                    mesh.position.set(posX, 0, posZ);
+                    
+                    // Store metadata in userData for easy access
+                    mesh.userData = { 
+                        x: x, 
+                        z: z, 
+                        isAlive: cellState,
+                        originalMaterial: material.clone()
+                    };
+
+                    scene.add(mesh);
+                    cellsMeshes.push(mesh);
+                    
+                    grid[x][z] = cellState;
+                }
+            }
+            
+            updateStats();
+        }
+
+        function resizeGrid() {
+            const newSize = parseInt(document.getElementById('gridSizeRange').value);
+            
+            // If size is changing significantly, recreate grid
+            if (newSize !== CONFIG.initialGrid) {
+                CONFIG.initialGrid = newSize;
+                createGrid();
+                
+                // Adjust camera position to fit new grid
+                const gridDim = CONFIG.initialGrid * CONFIG.cellSize + (CONFIG.initialGrid - 1) * CONFIG.gap;
+                controls.target.set(0, 0, 0);
+            }
+        }
+
+        function randomizeGrid() {
+            for (let x = 0; x < CONFIG.initialGrid; x++) {
+                for (let z = 0; z < CONFIG.initialGrid; z++) {
+                    grid[x][z] = Math.random() > 0.8 ? 1 : 0;
+                    updateCellVisual(x, z);
+                }
+            }
+            generation = 0;
+            updateStats();
+        }
+
+        function clearGrid() {
+            stopGame();
+            for (let x = 0; x < CONFIG.initialGrid; x++) {
+                for (let z = 0; z < CONFIG.initialGrid; z++) {
+                    grid[x][z] = 0;
+                    updateCellVisual(x, z);
+                }
+            }
+            generation = 0;
+            updateStats();
+        }
+
+        function updateCellVisual(x, z) {
+            const mesh = cellsMeshes.find(m => m.userData.x === x && m.userData.z === z);
+            if (mesh) {
+                // Update color and glow
+                const isAlive = grid[x][z] === 1;
+                
+                if (isAlive) {
+                    mesh.material.color.lerp(CONFIG.colors.alive, 0.2);
+                    mesh.material.emissive.setHex(0x333333); // Slight self-illumination
+                    mesh.scale.setScalar(1.05); // Pop effect
+                } else {
+                    mesh.material.color.lerp(CONFIG.colors.dead, 0.2);
+                    mesh.material.emissive.setHex(0x000000);
+                    mesh.scale.setScalar(1.0);
+                }
+            }
+        }
+
+        // --- Game Logic ---
+
+        function toggleGame() {
+            isRunning = !isRunning;
+            const btn = document.getElementById('btn-start');
+            
+            if (isRunning) {
+                btn.textContent = "Pause";
+                btn.style.background = "#ff4757";
+                btn.style.boxShadow = "0 4px 15px rgba(255, 71, 87, 0.3)";
+            } else {
+                btn.textContent = "Start";
+                btn.style.background = ""; // Reset to CSS default
+                btn.style.boxShadow = "";
+            }
+        }
+
+        function stopGame() {
+            isRunning = false;
+            document.getElementById('btn-start').textContent = "Start";
+        }
+
+        function updateGridLogic() {
+            const size = CONFIG.initialGrid;
+            let aliveCount = 0;
+            
+            // Create a copy of the grid for calculation (to prevent simultaneous updates)
+            const nextGen = JSON.parse(JSON.stringify(grid));
+
+            for (let x = 0; x < size; x++) {
+                for (let z = 0; z < size; z++) {
+                    let neighbors = countNeighbors(x, z);
+                    
+                    if (grid[x][z] === 1) aliveCount++;
+
+                    // Conway's Rules
+                    if (grid[x][z] === 1 && (neighbors < 2 || neighbors > 3)) {
+                        nextGen[x][z] = 0; // Dies
+                    } else if (grid[x][z] === 0 && neighbors === 3) {
+                        nextGen[x][z] = 1; // Born
+                    }
+                }
+            }
+
+            grid = nextGen;
+
+            // Update visuals asynchronously to avoid blocking the main thread too much
+            requestAnimationFrame(() => {
+                for (let x = 0; x < size; x++) {
+                    for (let z = 0; z < size; z++) {
+                        updateCellVisual(x, z);
+                    }
+                }
+            });
+
+            generation++;
+            updateStats(aliveCount);
+        }
+
+        function countNeighbors(x, z) {
+            let sum = 0;
+            const size = CONFIG.initialGrid;
+
+            for (let i = -1; i <= 1; i++) {
+                for (let j = -1; j <= 1; j++) {
+                    if (i === 0 && j === 0) continue; // Skip self
+
+                    let col = x + i;
+                    let row = z + j;
+
+                    // Wrap around edges (Toroidal array)
+                    if (col < 0) col += size;
+                    if (col >= size) col -= size;
+                    if (row < 0) row += size;
+                    if (row >= size) row -= size;
+
+                    sum += grid[col][row];
+                }
+            }
+            return sum;
+        }
+
+        function updateStats(aliveCount = null) {
+            document.getElementById('gen-count').textContent = generation;
+            document.getElementById('alive-count').textContent = aliveCount || 0;
+        }
+
+        // --- Animation Loop ---
+
+        function animate(time) {
+            requestAnimationFrame(animate);
+
+            const delta = time - lastTime;
+            
+            if (isRunning && speed > 0) {
+                accumulator += delta * (speed / 1000);
+                
+                while (accumulator >= 1000) { // Run logic every 1 second (approx)
+                    updateGridLogic();
+                    accumulator -= 1000;
+                }
+            }
+
+            controls.update();
+            
+            // Subtle camera sway for "wow" factor when idle
+            if (!isRunning && generation === 0) {
+                const time = Date.now() * 0.0005;
+                camera.position.x += Math.sin(time) * 0.01;
+                camera.position.z += Math.cos(time) * 0.01;
+            }
+
+            renderer.render(scene, camera);
+        }
+
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+        // Start Everything
+        init();
+
+    </script>
+</body>
+</html>

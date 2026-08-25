@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Conway's Game of Life</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1a2a6c, #b21f1f, #1a2a6c);
+            color: #fff;
+            min-height: 100vh;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 20px;
+            padding: 10px;
+            border-radius: 10px;
+            background: rgba(0, 0, 0, 0.2);
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            font-weight: 700;
+            background: linear-gradient(to right, #4cc9f0, #00c9ff);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+        }
+
+        .controls {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            margin-bottom: 15px;
+            justify-content: center;
+        }
+
+        .control-btn {
+            padding: 10px 15px;
+            font-size: 1rem;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            background: rgba(255, 255, 255, 0.15);
+            color: white;
+            transition: all 0.2s;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .control-btn:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: translateY(-2px);
+        }
+
+        .control-btn:active {
+            transform: translateY(0);
+        }
+
+        .control-btn.start-stop {
+            background: linear-gradient(to right, #4cc9f0, #00c9ff);
+            color: #000;
+        }
+
+        .control-btn.start-stop:hover {
+            background: linear-gradient(to right, #3aa3d0, #00b3e0);
+        }
+
+        .control-btn.start-stop:active {
+            background: linear-gradient(to right, #3399c0, #00a0d0);
+        }
+
+        .speed-slider {
+            flex: 1;
+            min-width: 200px;
+            margin: 0 auto;
+        }
+
+        .speed-label {
+            text-align: center;
+            font-size: 0.9rem;
+            color: #aaa;
+            margin-top: 5px;
+        }
+
+        #grid {
+            display: grid;
+            grid-template-columns: repeat(40, 1fr);
+            grid-template-rows: repeat(40, 1fr);
+            gap: 1px;
+            background: rgba(0, 0, 0, 0.1);
+            border-radius: 8px;
+            overflow: hidden;
+            margin: 0 auto;
+            max-width: 800px;
+        }
+
+        .cell {
+            width: 100%;
+            height: 100%;
+            background: #2d2d2d;
+            border: 1px solid #444;
+            cursor: pointer;
+            transition: all 0.1s;
+        }
+
+        .cell.alive {
+            background: linear-gradient(to right, #00ff00, #00cc00);
+        }
+
+        .cell:hover {
+            transform: scale(1.02);
+        }
+
+        .instructions {
+            text-align: center;
+            padding: 15px;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 8px;
+            max-width: 800px;
+            margin: 0 auto;
+            font-size: 0.95rem;
+            line-height: 1.4;
+        }
+
+        .instructions p {
+            margin-bottom: 8px;
+        }
+
+        .instructions a {
+            color: #00ff00;
+            text-decoration: none;
+            font-weight: 600;
+        }
+
+        .instructions a:hover {
+            text-decoration: underline;
+        }
+
+        footer {
+            text-align: center;
+            margin-top: 20px;
+            padding: 10px;
+            color: #aaa;
+            font-size: 0.8rem;
+        }
+
+        @media (max-width: 600px) {
+            #grid {
+                grid-template-columns: repeat(20, 1fr);
+                grid-template-rows: repeat(20, 1fr);
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Conway's Game of Life</h1>
+    </header>
+
+    <div class="controls">
+        <button class="control-btn start-stop" id="startStopBtn">
+            <span>▶ Start</span>
+        </button>
+        <button class="control-btn" id="clearBtn">
+            <span>♻️ Clear</span>
+        </button>
+        <button class="control-btn" id="randomizeBtn">
+            <span>🎲 Randomize</span>
+        </button>
+        <div class="speed-slider">
+            <label for="speedSlider">Speed:</label>
+            <input type="range" min="50" max="200" value="100" id="speedSlider">
+            <div class="speed-label" id="speedLabel">100ms</div>
+        </div>
+    </div>
+
+    <div id="grid"></div>
+
+    <div class="instructions">
+        <p>Click on cells to toggle their state (alive/dead).<br>
+        <strong>Rules:</strong> Any live cell with fewer than 2 live neighbors dies. Any live cell with 2 or 3 live neighbors survives. Any live cell with more than 3 live neighbors dies. Any dead cell with exactly 3 live neighbors becomes a live cell.</p>
+        <p>Try patterns like <a href="https://en.wikipedia.org/wiki/Conway%27s_Game_of_Life#Examples" target="_blank">gliders</a>, <a href="https://en.wikipedia.org/wiki/Blinker" target="_blank">blinks</a>, or <a href="https://en.wikipedia.org/wiki/Still_life" target="_blank">still lives</a>.</p>
+    </div>
+
+    <footer>
+        <p>Conway's Game of Life &copy; 2023 | Created with JavaScript & CSS</p>
+    </footer>
+
+    <script>
+        // Game configuration
+        const gridSize = 40;
+        const cellSize = 15;
+        const isRunning = false; // Flag to track simulation state
+        let currentState = Array.from({ length: gridSize }, () => 
+            Array.from({ length: gridSize }, () => false)
+        );
+        let intervalId = null;
+        let isSimulating = false;
+        let lastStepTime = 0;
+
+        // DOM elements
+        const grid = document.getElementById('grid');
+        const startStopBtn = document.getElementById('startStopBtn');
+        const clearBtn = document.getElementById('clearBtn');
+        const randomizeBtn = document.getElementById('randomizeBtn');
+        const speedSlider = document.getElementById('speedSlider');
+        const speedLabel = document.getElementById('speedLabel');
+
+        // Initialize the grid
+        function initGrid() {
+            grid.innerHTML = '';
+            
+            for (let row = 0; row < gridSize; row++) {
+                for (let col = 0; col < gridSize; col++) {
+                    const cell = document.createElement('div');
+                    cell.className = 'cell';
+                    cell.dataset.row = row;
+                    cell.dataset.col = col;
+                    cell.addEventListener('click', () => toggleCell(row, col));
+                    grid.appendChild(cell);
+                }
+            }
+            
+            // Draw initial state
+            drawGrid();
+        }
+
+        // Toggle cell state
+        function toggleCell(row, col) {
+            currentState[row][col] = !currentState[row][col];
+            drawGrid();
+        }
+
+        // Draw grid based on current state
+        function drawGrid() {
+            grid.querySelectorAll('.cell').forEach(cell => {
+                const row = parseInt(cell.dataset.row);
+                const col = parseInt(cell.dataset.col);
+                cell.classList.toggle('alive', currentState[row][col]);
+            });
+        }
+
+        // Compute next state
+        function computeNextState() {
+            const nextState = Array.from({ length: gridSize }, () => 
+                Array.from({ length: gridSize }, () => false)
+            );
+
+            for (let row = 0; row < gridSize; row++) {
+                for (let col = 0; col < gridSize; col++) {
+                    let liveNeighbors = 0;
+                    
+                    // Check all 8 neighbors
+                    for (let r = -1; r <= 1; r++) {
+                        for (let c = -1; c <= 1; c++) {
+                            if (r === 0 && c === 0) continue;
+                            
+                            const neighborRow = row + r;
+                            const neighborCol = col + c;
+                            
+                            if (neighborRow >= 0 && neighborRow < gridSize && 
+                                neighborCol >= 0 && neighborCol < gridSize) {
+                                liveNeighbors += currentState[neighborRow][neighborCol];
+                            }
+                        }
+                    }
+                    
+                    // Apply rules
+                    if (currentState[row][col]) {
+                        if (liveNeighbors === 2 || liveNeighbors === 3) {
+                            nextState[row][col] = true;
+                        }
+                    } else {
+                        if (liveNeighbors === 3) {
+                            nextState[row][col] = true;
+                        }
+                    }
+                }
+            }
+            
+            return nextState;
+        }
+
+        // Start/stop simulation
+        function startSimulation() {
+            if (isSimulating) {
+                clearInterval(intervalId);
+                isSimulating = false;
+                startStopBtn.textContent = '▶ Start';
+            } else {
+                isSimulating = true;
+                startStopBtn.textContent = '◼ Stop';
+                intervalId = setInterval(() => {
+                    const nextState = computeNextState();
+                    currentState = nextState;
+                    drawGrid();
+                }, speedSlider.value);
+            }
+        }
+
+        // Clear grid
+        function clearGrid() {
+            currentState = Array.from({ length: gridSize }, () => 
+                Array.from({ length: gridSize }, () => false)
+            );
+            drawGrid();
+        }
+
+        // Randomize grid
+        function randomizeGrid() {
+            for (let row = 0; row < gridSize; row++) {
+                for (let col = 0; col < gridSize; col++) {
+                    currentState[row][col] = Math.random() > 0.5;
+                }
+            }
+            drawGrid();
+        }
+
+        // Initialize the game
+        function init() {
+            initGrid();
+            
+            // Event listeners
+            startStopBtn.addEventListener('click', startSimulation);
+            clearBtn.addEventListener('click', clearGrid);
+            randomizeBtn.addEventListener('click', randomizeGrid);
+            
+            speedSlider.addEventListener('input', () => {
+                const speed = speedSlider.value;
+                speedLabel.textContent = `${speed}ms`;
+            });
+            
+            // Initialize speed label
+            speedLabel.textContent = `${speedSlider.value}ms`;
+        }
+
+        // Start the game
+        document.addEventListener('DOMContentLoaded', init);
+    </script>
+</body>
+</html>

@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Conway's Game of Life</title>
+    <style>
+        :root {
+            --bg-color: #1a1a1a;
+            --grid-line: #333;
+            --cell-alive: #4ade80; /* Bright Green */
+            --cell-dead: #262626;
+            --text-color: #eee;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin: 0;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        h1 {
+            margin-top: 20px;
+            font-weight: 300;
+            letter-spacing: 2px;
+        }
+
+        .controls {
+            padding: 15px;
+            background-color: #2a2a2a;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        button {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: transform 0.1s, opacity 0.2s;
+        }
+
+        button:active {
+            transform: scale(0.95);
+        }
+
+        .btn-start { background-color: #4ade80; color: #064e3b; }
+        .btn-stop { background-color: #f87171; color: #7f1d1d; display: none;}
+        .btn-random { background-color: #60a5fa; color: #1e3a8a; }
+        .btn-clear { background-color: #9ca3af; color: #1f2937; }
+
+        input[type="range"] {
+            vertical-align: middle;
+        }
+
+        canvas {
+            border: 1px solid var(--grid-line);
+            box-shadow: 0 0 20px rgba(0,0,0,0.5);
+            background-color: #000;
+            cursor: crosshair;
+        }
+
+        .info {
+            margin-top: 10px;
+            font-size: 0.9rem;
+            color: #888;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>GAME OF LIFE</h1>
+
+    <div class="controls">
+        <button id="btn-start" class="btn-start">Start</button>
+        <button id="btn-stop" class="btn-stop">Stop</button>
+        <button id="btn-random" class="btn-random">Randomize</button>
+        <button id="btn-clear" class="btn-clear">Clear</button>
+        
+        <div style="display:flex; align-items:center; gap:5px;">
+            <label for="speed">Speed:</label>
+            <input type="range" id="speed" min="10" max="200" value="50">
+        </div>
+    </div>
+
+    <canvas id="gridCanvas"></canvas>
+    
+    <p class="info">Click on the grid to toggle cells manually.</p>
+
+    <script>
+        const canvas = document.getElementById('gridCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        // Configuration
+        const resolution = 10; // Size of each cell in pixels
+        let width, height;
+        let cols, rows;
+        let grid;
+        let animationId;
+        let isRunning = false;
+        let speed = 50;
+
+        // DOM Elements
+        const btnStart = document.getElementById('btn-start');
+        const btnStop = document.getElementById('btn-stop');
+        const btnRandom = document.getElementById('btn-random');
+        const btnClear = document.getElementById('btn-clear');
+        const speedInput = document.getElementById('speed');
+
+        function resize() {
+            // Calculate available space (minus header/footer)
+            const maxWidth = window.innerWidth - 40;
+            const maxHeight = window.innerHeight - 150;
+
+            // Snap to resolution grid
+            width = Math.floor(maxWidth / resolution) * resolution;
+            height = Math.floor(maxHeight / resolution) * resolution;
+
+            canvas.width = width;
+            canvas.height = height;
+
+            cols = width / resolution;
+            rows = height / resolution;
+
+            if (!grid) {
+                grid = make2DArray(cols, rows);
+            } else {
+                // If resizing, we keep the data but might truncate it. 
+                // For simplicity in this demo, we just redraw existing cells.
+            }
+            
+            draw();
+        }
+
+        function make2DArray(c, r) {
+            let arr = new Array(c);
+            for (let i = 0; i < arr.length; i++) {
+                arr[i] = new Array(r).fill(0);
+            }
+            return arr;
+        }
+
+        function randomizeGrid() {
+            for (let col = 0; col < cols; col++) {
+                for (let row = 0; row < rows; row++) {
+                    grid[col][row] = Math.random() > 0.85 ? 1 : 0; // 15% chance of life
+                }
+            }
+            draw();
+        }
+
+        function clearGrid() {
+            for (let col = 0; col < cols; col++) {
+                for (let row = 0; row < rows; row++) {
+                    grid[col][row] = 0;
+                }
+            }
+            draw();
+        }
+
+        function draw() {
+            ctx.fillStyle = '#1a1a1a'; // Background color
+            ctx.fillRect(0, 0, width, height);
+
+            for (let col = 0; col < cols; col++) {
+                for (let row = 0; row < rows; row++) {
+                    const cell = grid[col][row];
+                    
+                    if (cell === 1) {
+                        ctx.fillStyle = '#4ade80'; // Alive color
+                        ctx.fillRect(col * resolution, row * resolution, resolution - 1, resolution - 1);
+                    } else {
+                        ctx.fillStyle = '#262626'; // Dead color (grid lines)
+                        ctx.fillRect(col * resolution, row * resolution, resolution - 1, resolution - 1);
+                    }
+                }
+            }
+        }
+
+        function update() {
+            const nextGrid = make2DArray(cols, rows);
+
+            for (let col = 0; col < cols; col++) {
+                for (let row = 0; row < rows; row++) {
+                    const cell = grid[col][row];
+                    let numNeighbors = 0;
+
+                    // Check surrounding 3x3 box
+                    for (let i = -1; i < 2; i++) {
+                        for (let j = -1; j < 2; j++) {
+                            if (i === 0 && j === 0) continue;
+                            
+                            const x_cell = col + i;
+                            const y_cell = row + j;
+
+                            // Handle edges (Toroidal / wrapping logic: if off screen, go to other side)
+                            if (x_cell >= 0 && x_cell < cols && y_cell >= 0 && y_cell < rows) {
+                                numNeighbors += grid[x_cell][y_cell];
+                            } else {
+                                // Wrap around logic for edges
+                                if (x_cell < 0) numNeighbors += grid[cols - 1][y_cell];
+                                if (x_cell >= cols) numNeighbors += grid[0][y_cell];
+                                if (y_cell < 0) numNeighbors += grid[x_cell][rows - 1];
+                                if (y_cell >= rows) numNeighbors += grid[x_cell][0];
+                            }
+                        }
+                    }
+
+                    // Apply Conway's Rules
+                    if (cell === 1 && numNeighbors < 2) {
+                        nextGrid[col][row] = 0; // Underpopulation
+                    } else if (cell === 1 && numNeighbors > 3) {
+                        nextGrid[col][row] = 0; // Overpopulation
+                    } else if (cell === 0 && numNeighbors === 3) {
+                        nextGrid[col][row] = 1; // Reproduction
+                    } else {
+                        nextGrid[col][row] = cell; // Survival or Stasis
+                    }
+                }
+            }
+
+            grid = nextGrid;
+            draw();
+        }
+
+        function loop() {
+            if (!isRunning) return;
+            
+            update();
+            
+            // Delay based on speed input (inverted: lower value = faster delay)
+            setTimeout(() => {
+                requestAnimationFrame(loop);
+            }, 255 - speedInput.value); 
+        }
+
+        function start() {
+            if (!isRunning) {
+                isRunning = true;
+                btnStart.style.display = 'none';
+                btnStop.style.display = 'inline-block';
+                loop();
+            }
+        }
+
+        function stop() {
+            isRunning = false;
+            btnStart.style.display = 'inline-block';
+            btnStop.style.display = 0; // Reset to floating point value
+            btnStart.innerText = "Play";
+            btnStop.style.display = 0; // Logic fix handled in click events usually, but let's keep it simple
+            
+            // Let's just toggle the buttons cleanly via JS click handler logic below instead of inline styles toggling
+        }
+
+        // --- Event Listeners ---
+
+        canvas.addEventListener('mousedown', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+
+            const col = Math.floor(x / resolution);
+            const row = Math.floor(y / resolution);
+
+            if (col >= 0 && col < cols && row >= 0 && row < rows) {
+                grid[col][row] = grid[col][row] ? 0 : 1; // Toggle
+                draw();
+            }
+        });
+
+        btnStart.addEventListener('click', () => {
+            if(isRunning) return;
+            isRunning = true;
+            loop();
+            
+            // Button toggle logic
+            const allBtns = document.querySelectorAll('.controls button');
+            allBtns.forEach(b => b.style.display = 'none');
+            btnStop.style.display = 'inline-block';
+        });
+
+        btnStop.addEventListener('click', () => {
+            isRunning = false;
+            
+            // Button toggle logic
+            const allBtns = document.querySelectorAll('.controls button');
+            allBtns.forEach(b => b.style.display = 'none');
+            btnStart.style.display = 'inline-block';
+        });
+
+        btnRandom.addEventListener('click', () => {
+            randomizeGrid();
+        });
+
+        btnClear.addEventListener('click', () => {
+            clearGrid();
+            isRunning = false; // Stop if running
+             const allBtns = document.querySelectorAll('.controls button');
+            allBtns.forEach(b => b.style.display = 'none');
+            btnStart.style.display = 'inline-block';
+        });
+
+        window.addEventListener('resize', () => {
+            resize();
+            // If grid is wiped on resize, we lose state. 
+            // Ideally, you copy the old grid to the new one, but for this simple version:
+            if(isRunning) start(); 
+        });
+
+        // Initialize
+        resize();
+        randomizeGrid();
+
+    </script>
+</body>
+</html>

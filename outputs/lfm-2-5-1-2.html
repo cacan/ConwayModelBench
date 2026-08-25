@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Conway's Game of Life - Modern UI</title>
+    <style>
+        :root {
+            --primary-color: #4CAF50;
+            --background-color: #f5f5f5;
+            --text-color: #333;
+            --border-radius: 15px;
+            --transition: all 0.3s ease;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            background-color: var(--background-color);
+            color: var(--text-color);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+
+        .game-container {
+            text-align: center;
+            background: white;
+            padding: 2rem;
+            border-radius: var(--border-radius);
+            box-shadow: 0 0 20px rgba(0,0,0,0.1);
+            width: 90%;
+            max-width: 800px;
+        }
+
+        .controls {
+            margin-top: 1rem;
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+        }
+
+        button {
+            padding: 0.8rem 1.5rem;
+            border: none;
+            border-radius: var(--border-radius);
+            background-color: var(--primary-color);
+            color: white;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        button:hover {
+            background-color: #45a049;
+        }
+
+        .cell {
+            width: 40px;
+            height: 40px;
+            border: 1px solid #ddd;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2rem;
+            transition: transform 0.3s ease;
+        }
+
+        .cell.active {
+            background-color: #4CAF50;
+        }
+
+        .life-cell {
+            animation: lifeCycle 1s infinite;
+        }
+
+        @keyframes lifeCycle {
+            0% { transform: scale(0.99); }
+            25% { transform: scale(1.01); }
+            50% { transform: scale(0.99); }
+            75% { transform: scale(1.01); }
+            100% { transform: scale(1); }
+        }
+
+        .info {
+            margin-top: 1rem;
+            font-size: 0.9rem;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <div class="controls">
+            <button onclick="resetGame()">Reset Game</button>
+            <button onclick="toggleCell(0,0)">Cell 0,0</button>
+            <button onclick="toggleCell(5,5)">Cell 5,5</button>
+        </div>
+        
+        <div id="gameArea"></div>
+        
+        <div class="info" id="infoText">Press buttons to change cells. Game runs in real-time.</div>
+    </div>
+
+    <script>
+        const gameArea = document.getElementById('gameArea');
+        const infoText = document.getElementById('infoText');
+        let gridSize = 40;
+        let cellSize = 40;
+        let grid = [];
+        let running = true;
+
+        // Initialize grid
+        function initializeGrid() {
+            grid = Array.from({length: gridSize}, () => Array(gridSize).fill(null));
+            updateGrid();
+        }
+
+        // Update grid with current state
+        function updateGrid() {
+            const cells = document.querySelectorAll('.cell');
+            cells.forEach(cell => {
+                cell.classList.remove('active');
+            });
+            
+            for (let i = 0; i < gridSize; i++) {
+                for (let j = 0; j < gridSize; j++) {
+                    const cell = document.createElement('div');
+                    cell.className = 'cell';
+                    cell.dataset.index = `${i},${j}`;
+                    
+                    if (grid[i][j]) {
+                        cell.classList.add('life-cell');
+                        cell.textContent = 'O';
+                    } else {
+                        cell.classList.remove('life-cell');
+                        cell.textContent = '.'
+                    }
+                    
+                    grid[i][j] = cell;
+                    updateCell(i, j);
+                }
+            }
+        }
+
+        // Update individual cell state
+        function updateCell(i, j) {
+            const isAlive = grid[i][j] === 'O';
+            const neighbors = getNeighbors(i, j);
+            
+            if (grid[i][j]) {
+                if (
+                    (neighbors.length === 2 && 
+                     (grid[i-1][j] === 'O' && grid[i+1][j] === 'O') ||
+                    (grid[i-1][j] === 'O' && grid[i+1][j] === '.')) ||
+                    (grid[i][j-1] === 'O' && grid[i][j+1] === 'O')
+                ) {
+                    grid[i][j] = 'O';
+                }
+            } else {
+                if (
+                    (neighbors.length === 3 && 
+                     (grid[i-2][j] === 'O' && grid[i-2][j-1] === 'O') ||
+                     (grid[i-2][j] === 'O' && grid[i-2][j+1] === 'O') ||
+                     (grid[i][j-2] === 'O' && grid[i][j+2] === 'O'))
+                ) {
+                    grid[i][j] = 'O';
+                }
+            }
+        }
+
+        // Get valid neighbor positions
+        function getNeighbors(i, j) {
+            const neighbors = [];
+            const directions = [
+                [-1, 0], [1, 0],
+                [0, -1], [0, 1],
+                [-1, -1], [-1, 1], [1, -1], [1, 1]
+            ];
+            
+            for (const [di, dj] of directions) {
+                const ni = i + di;
+                const nj = j + dj;
+                if (ni >= 0 && ni < gridSize && nj >= 0 && nj < gridSize) {
+                    neighbors.push(grid[ni][nj]);
+                }
+            }
+            return neighbors;
+        }
+
+        // Toggle cell state
+        function toggleCell(x, y) {
+            const cell = document.querySelector(`.cell[data-index="${x},${y}]`);
+            if (cell) {
+                cell.classList.toggle('active');
+                updateGrid();
+            }
+        }
+
+        // Reset game to initial state
+        function resetGame() {
+            initializeGrid();
+            infoText.textContent = "Press buttons to change cells. Game runs in real-time.";
+        }
+
+        // Start game loop
+        function startGameLoop() {
+            running = true;
+            const interval = setInterval(() => {
+                updateGrid();
+                requestAnimationFrame(startGameLoop);
+            }, 100);
+        }
+
+        // Initialize game
+        initializeGrid();
+        startGameLoop();
+    </script>
+</body>
+</html>

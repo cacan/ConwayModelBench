@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Conway's Game of Life</title>
+    <style>
+        :root {
+            --bg-color: #1a1a1a;
+            --grid-bg: #2d2d2d;
+            --cell-off: #383838;
+            --cell-on: #4caf50; /* Green */
+            --text-color: #ffffff;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+        }
+
+        h1 {
+            margin-bottom: 10px;
+            font-weight: 300;
+        }
+
+        .controls {
+            margin-bottom: 20px;
+            display: flex;
+            gap: 15px;
+            align-items: center;
+            background: var(--grid-bg);
+            padding: 10px 20px;
+            border-radius: 8px;
+        }
+
+        button {
+            padding: 8px 16px;
+            cursor: pointer;
+            background-color: #4caf50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            font-size: 14px;
+            transition: background 0.2s;
+        }
+
+        button:hover {
+            background-color: #43a047;
+        }
+
+        button.secondary {
+            background-color: #555;
+        }
+        
+        button.secondary:hover {
+            background-color: #666;
+        }
+
+        .slider-container {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        canvas {
+            border: 2px solid var(--grid-bg);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+            cursor: crosshair;
+            background-color: var(--grid-bg);
+        }
+
+        .stats {
+            margin-top: 10px;
+            font-size: 0.9rem;
+            color: #aaa;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Conway's Game of Life</h1>
+
+    <div class="controls">
+        <button id="startBtn">Start / Pause</button>
+        <button id="randomBtn" class="secondary">Randomize</button>
+        
+        <div class="slider-container">
+            <label for="speedRange">Speed:</label>
+            <input type="range" id="speedRange" min="10" max="100" value="50">
+        </div>
+    </div>
+
+    <!-- The grid canvas -->
+    <canvas id="gridCanvas"></canvas>
+
+    <div class="stats">
+        Generation: <span id="generationCount">0</span> | Cells Alive: <span id="aliveCount">0</span>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('gridCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        // Configuration
+        const resolution = 10; // Size of each cell in pixels
+        let cols, rows;
+        let grid;
+        let animationId;
+        let isRunning = false;
+        let generation = 0;
+        let speedInterval = 50; // Lower is faster
+
+        // DOM Elements
+        const startBtn = document.getElementById('startBtn');
+        const randomBtn = document.getElementById('randomBtn');
+        const speedRange = document.getElementById('speedRange');
+        const genDisplay = document.getElementById('generationCount');
+        const aliveDisplay = document.getElementById('aliveCount');
+
+        // Initialize the grid
+        function init() {
+            resizeCanvas();
+            createGrid();
+            drawGrid();
+            
+            window.addEventListener('resize', () => {
+                resizeCanvas();
+                createGrid();
+                drawGrid();
+            });
+        }
+
+        function resizeCanvas() {
+            // Set canvas size based on screen, minus some padding
+            const maxWidth = Math.min(window.innerWidth - 40, 800);
+            const maxHeight = window.innerHeight - 150;
+            
+            canvas.width = maxWidth;
+            canvas.height = maxHeight;
+
+            cols = Math.floor(canvas.width / resolution);
+            rows = Math.floor(canvas.height / resolution);
+        }
+
+        function createGrid() {
+            grid = new Array(cols).fill(null)
+                .map(() => new Array(rows).fill(0));
+            
+            // Fill with random cells initially
+            for (let i = 0; i < cols * rows; i++) {
+                if (Math.random() > 0.5) {
+                    grid[i].push(1);
+                } else {
+                    grid[i].push(0);
+                }
+            }
+        }
+
+        function drawGrid() {
+            // Clear background
+            ctx.fillStyle = '#2d2d2d';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Draw cells
+            for (let i = 0; i < cols * rows; i++) {
+                if (grid[i][1]) {
+                    ctx.fillStyle = '#4caf50';
+                    ctx.fillRect(i * resolution, 0, resolution, resolution);
+                } else {
+                    // Optional: Draw faint grid lines for cells that are off
+                    ctx.strokeStyle = '#383838';
+                    ctx.strokeRect(i * resolution, 0, resolution, resolution);
+                }
+            }
+        }
+
+        function updateGrid() {
+            const nextGrid = grid.map(arr => [...arr]); // Create a shallow copy of rows
+
+            for (let i = 0; i < cols * rows; i++) {
+                const state = grid[i][1];
+                
+                // Get neighbors
+                let neighbors = countNeighbors(i, grid);
+
+                // Apply Rules
+                if (state === 0 && neighbors > 0) {
+                    nextGrid[i].push(1); // Underpopulation -> Reproduction
+                } else if (state === 1 && (neighbors < 2 || neighbors > 3)) {
+                    nextGrid[i].push(0); // Overcrowding or Undersurvival
+                } else {
+                    nextGrid[i].push(state); // Stasis
+                }
+            }
+
+            grid = nextGrid;
+            generation++;
+            
+            // Update Stats UI
+            let aliveCount = 0;
+            for(let i=0; i<cols*rows; i++) if(grid[i][1]) aliveCount++;
+            aliveDisplay.innerText = aliveCount;
+            genDisplay.innerText = generation;
+
+            drawGrid();
+        }
+
+        function countNeighbors(index, grid) {
+            let row = Math.floor(index / cols);
+            let col = index % cols;
+            
+            // Wrap around edges (Toroidal array)
+            const topRow = (row - 1 + rows) % rows;
+            const bottomRow = (row + 1 + rows) % rows;
+
+            let neighbors = 0;
+
+            for (let i = topRow; i <= bottomRow; i++) {
+                for (let j = col - 1; j <= col + 1; j++) {
+                    // Skip self and immediate center
+                    if (i === row && j === col) continue;
+                    
+                    const index = i * cols + j;
+                    neighbors += grid[index][1];
+                }
+            }
+
+            return neighbors;
+        }
+
+        function gameLoop() {
+            updateGrid();
+            
+            // Use setTimeout to control speed based on slider value
+            setTimeout(() => {
+                if (isRunning) requestAnimationFrame(gameLoop);
+            }, 100 - speedInterval); 
+        }
+
+        // Event Listeners
+        
+        startBtn.addEventListener('click', () => {
+            isRunning = !isRunning;
+            startBtn.innerText = isRunning ? "Pause" : "Start";
+            
+            if (isRunning) {
+                gameLoop();
+            } else {
+                cancelAnimationFrame(animationId);
+            }
+        });
+
+        randomBtn.addEventListener('click', () => {
+            createGrid(); // Regenerate grid
+            generation = 0;
+            genDisplay.innerText = "0";
+            aliveDisplay.innerText = "0";
+            drawGrid();
+        });
+
+        speedRange.addEventListener('input', (e) => {
+            speedInterval = parseInt(e.target.value);
+        });
+
+        // Mouse interaction to click cells directly on canvas
+        canvas.addEventListener('click', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - top;
+            
+            const col = Math.floor(x / resolution);
+            const row = Math.floor(y / resolution);
+
+            if (col >= 0 && col < cols && row >= 0 && row < rows) {
+                grid[col].push(1); // Toggle cell to ON
+                drawGrid();
+            }
+        });
+
+        // Start the app
+        init();
+    </script>
+</body>
+</html>

@@ -1,0 +1,553 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Conway's Game of Life | Modern Implementation</title>
+    
+    <!-- Font Awesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+    
+    <style>
+        :root {
+            /* Modern color scheme */
+            --primary-dark: #1a1c2d;
+            --primary: #3b82f6;
+            --secondary: #3498db;
+            --accent: #f59e0b;
+            --dark-bg: #0f172a;
+            --light-bg: #f8fafc;
+            --card-shadow: 0 4px 6px rgba(0, 0, 0, 0.1), 0 12px 30px rgba(0, 0, 0, 0.15);
+            --border-radius: 12px;
+            --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            background: linear-gradient(to bottom right, #0f172a, #1e293b);
+            font-family: 'Inter', sans-serif;
+            min-height: 100vh;
+            overflow-x: hidden;
+            color: white;
+            line-height: 1.6;
+        }
+        
+        .app-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+        
+        header {
+            text-align: center;
+            padding: 1.5rem 0;
+            border-bottom: 1px solid rgba(100, 149, 237, 0.2);
+            margin-bottom: 2rem;
+        }
+        
+        h1 {
+            font-size: 2.8rem;
+            font-weight: 600;
+            background: linear-gradient(to right, #f59e0b, #3498db);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+            margin-bottom: 1rem;
+        }
+        
+        .subtitle {
+            font-size: 1.2rem;
+            max-width: 700px;
+            margin: 0 auto;
+            color: rgba(255, 255, 255, 0.8);
+            line-height: 1.6;
+        }
+        
+        .main-content {
+            display: grid;
+            grid-template-columns: 1fr 300px;
+            gap: 2rem;
+        }
+        
+        @media (max-width: 992px) {
+            .main-content {
+                grid-template-columns: 1fr;
+            }
+        }
+        
+        /* Controls Section */
+        .controls-section {
+            background: rgba(15, 23, 42, 0.8);
+            border-radius: var(--border-radius);
+            padding: 1.5rem;
+            backdrop-filter: blur(6px);
+            box-shadow: var(--card-shadow);
+            transition: var(--transition);
+        }
+        
+        .controls-section:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+        }
+        
+        .control-group {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            margin-bottom: 1.2rem;
+        }
+        
+        label {
+            font-weight: 600;
+            min-width: 80px;
+            color: #cbd5e1;
+        }
+        
+        .input-group {
+            flex: 1;
+            display: flex;
+            align-items: center;
+        }
+        
+        input[type="number"] {
+            width: 70px;
+            padding: 0.6rem;
+            border-radius: 8px;
+            background-color: rgba(30, 41, 59, 0.6);
+            border: 1px solid rgba(100, 149, 237, 0.3);
+            color: white;
+            font-size: 1rem;
+            transition: var(--transition);
+        }
+        
+        input[type="number"]:focus {
+            outline: none;
+            border-color: #f59e0b;
+            background-color: rgba(30, 41, 59, 0.8);
+        }
+        
+        .speed-control {
+            display: flex;
+            align-items: center;
+            gap: 0.8rem;
+            flex-shrink: 0;
+        }
+        
+        .speed-slider {
+            width: 220px;
+            height: 10px;
+            background-color: rgba(100, 149, 237, 0.2);
+            border-radius: 5px;
+            overflow: hidden;
+        }
+        
+        .slider-track {
+            height: 10px;
+            background-color: rgba(100, 149, 237, 0.3);
+            border-radius: 5px;
+        }
+        
+        .slider-thumb {
+            width: 22px;
+            height: 22px;
+            border-radius: 50%;
+            background-color: #f59e0b;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: var(--transition);
+        }
+        
+        .slider-thumb:hover {
+            transform: scale(1.2);
+        }
+        
+        /* Game Board */
+        .game-board {
+            background: rgba(15, 23, 42, 0.8);
+            border-radius: var(--border-radius);
+            overflow: hidden;
+            box-shadow: var(--card-shadow);
+            position: relative;
+            height: calc(100vh - 370px);
+        }
+        
+        .cell {
+            position: absolute;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background-color: rgba(245, 158, 11, 0.7);
+            transition: var(--transition);
+            cursor: pointer;
+        }
+        
+        .cell.alive {
+            background-color: #3b82f6;
+            box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.7), inset 0 0 0 1px white;
+        }
+        
+        .cell.dead {
+            background-color: transparent;
+        }
+        
+        /* Status bar */
+        .status-bar {
+            position: fixed;
+            bottom: 20px;
+            left: 0;
+            right: 0;
+            padding: 0.5rem;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 1rem;
+            background-color: rgba(30, 41, 59, 0.8);
+            border-radius: 8px;
+            backdrop-filter: blur(6px);
+            z-index: 100;
+        }
+        
+        .status-text {
+            font-size: 0.9rem;
+            color: rgba(255, 255, 255, 0.7);
+        }
+        
+        /* Instructions */
+        .instructions {
+            background: rgba(30, 41, 59, 0.6);
+            border-radius: var(--border-radius);
+            padding: 1.5rem;
+            margin-top: 1.5rem;
+            backdrop-filter: blur(8px);
+        }
+        
+        .instructions h2 {
+            color: #cbd5e1;
+            text-align: center;
+            font-size: 1.4rem;
+            margin-bottom: 1rem;
+        }
+        
+        .instructions ul {
+            list-style-type: none;
+            padding-left: 0;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1.5rem;
+            margin-top: 0.8rem;
+        }
+        
+        .instructions li {
+            background-color: rgba(40, 60, 90, 0.5);
+            padding: 1rem;
+            border-radius: 8px;
+            transition: var(--transition);
+            text-align: center;
+        }
+        
+        .instructions li:hover {
+            transform: translateY(-3px);
+            background-color: rgba(40, 60, 90, 0.7);
+        }
+        
+        /* Buttons */
+        .btn {
+            padding: 0.8rem 1.5rem;
+            border-radius: 8px;
+            font-weight: 500;
+            cursor: pointer;
+            border: none;
+            font-size: 1rem;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            transition: var(--transition);
+        }
+        
+        .btn-primary {
+            background-color: #3b82f6;
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            background-color: #2563eb;
+        }
+        
+        .btn-secondary {
+            background-color: rgba(100, 149, 237, 0.2);
+            border: 1px solid rgba(100, 149, 237, 0.4);
+            color: #f59e0b;
+        }
+        
+        .btn-secondary:hover {
+            background-color: rgba(100, 149, 237, 0.3);
+        }
+        
+        /* Animations */
+        @keyframes pulse {
+            0% { transform: scale(0.98); opacity: 0.95; }
+            50% { transform: scale(1.02); opacity: 1; }
+            100% { transform: scale(0.98); opacity: 0.95; }
+        }
+        
+        .pulse {
+            animation: pulse 1s infinite;
+        }
+        
+        .cell.pulse {
+            animation: pulse 1s infinite;
+        }
+        
+        /* Responsive adjustments */
+        @media (max-width: 768px) {
+            h1 {
+                font-size: 2.2rem;
+            }
+            
+            .game-board {
+                height: calc(100vh - 350px);
+            }
+            
+            .status-bar {
+                padding: 0.4rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <!-- Header -->
+        <header>
+            <h1>Conway's Game of Life</h1>
+            <p class="subtitle">A cellular automaton that reveals beautiful patterns from simple rules - a true example of emergent complexity.</p>
+        </header>
+
+        <!-- Main Content Grid -->
+        <div class="main-content">
+            <!-- Controls Section -->
+            <section class="controls-section">
+                <h2><i class="fas fa-cogs"></i> Game Settings</h2>
+                
+                <!-- Speed Control -->
+                <div class="control-group">
+                    <label for="speed">Speed:</label>
+                    <div class="input-group">
+                        <input type="number" id="speed" min="50" max="1000" value="300">
+                        <span id="speed-display">300</span> ms
+                    </div>
+                </div>
+
+                <!-- Play/Pause Button -->
+                <button id="play-pause-btn" class="btn btn-primary">
+                    <i class="fas fa-play"></i> Start
+                </button>
+                
+                <!-- Reset Button -->
+                <button id="reset-btn" class="btn btn-secondary">
+                    <i class="fas fa-redo-alt"></i> Reset
+                </button>
+            </section>
+
+            <!-- Game Board Section -->
+            <section class="game-board" id="game-board">
+                <!-- Cells will be added via JavaScript -->
+            </section>
+        </div>
+
+        <!-- Status Bar -->
+        <div class="status-bar">
+            <span class="status-text">Ready. Click cells to toggle, click Play to start simulation</span>
+        </div>
+    </div>
+
+    <script>
+        // DOM Elements
+        const gameBoard = document.getElementById('game-board');
+        const resetBtn = document.getElementById('reset-btn');
+        const playPauseBtn = document.getElementById('play-pause-btn');
+        const speedSlider = document.querySelector('#speed');
+        const speedDisplay = document.getElementById('speed-display');
+        
+        // Game State Variables
+        let grid = [];
+        let running = false;
+        let lastUpdate = 0;
+        const cellSize = 16;
+        const cellCountX = 80;    // More cells for better visual impact
+        const cellCountY = 60;    // More cells for better visual impact
+        const CELL_WIDTH = 16;
+        const CELL_HEIGHT = 16;
+
+        // Initialize Grid and DOM Structure
+        function initGrid() {
+            grid = Array.from({ length: cellCountY }, () => 
+                Array.from({ length: cellCountX }, () => false)
+            );
+            
+            gameBoard.innerHTML = '';
+            
+            for (let y = 0; y < cellCountY; y++) {
+                for (let x = 0; x < cellCountX; x++) {
+                    const cellEl = document.createElement('div');
+                    cellEl.className = 'cell';
+                    cellEl.dataset.x = x;
+                    cellEl.dataset.y = y;
+                    
+                    // Position the cell
+                    cellEl.style.left = `${x * CELL_WIDTH}px`;
+                    cellEl.style.top = `${y * CELL_HEIGHT}px`;
+                    
+                    gameBoard.appendChild(cellEl);
+                }
+            }
+            
+            // Initialize with a classic 'Glider' pattern - more visually interesting
+            const gliderPatternX = [1, 2, 3, 4];
+            const gliderPatternY = [1, 0, 1, 2];
+            
+            for (let i = 0; i < gliderPatternX.length; i++) {
+                grid[gliderPatternY[i]][gliderPatternX[i]] = true;
+            }
+        }
+
+        // Render cells based on state
+        function renderGrid() {
+            const cells = document.querySelectorAll('.cell');
+            
+            cells.forEach(cell => {
+                if (grid[cell.dataset.y] && grid[cell.dataset.y][cell.dataset.x]) {
+                    cell.classList.add('alive');
+                    cell.classList.remove('dead');
+                } else {
+                    cell.classList.remove('alive');
+                    cell.classList.add('dead');
+                }
+            });
+        }
+
+        // Count live neighbors for a given cell
+        function countNeighbors(x, y) {
+            let count = 0;
+            
+            const directions = [
+                [-1, -1], [-1, 0], [-1, 1],
+                [0, -1],           [0, 1],
+                [1, -1],  [1, 0],  [1, 1]
+            ];
+            
+            for (const [dx, dy] of directions) {
+                const nx = x + dx;
+                const ny = y + dy;
+                
+                if (nx >= 0 && nx < cellCountX && ny >= 0 && ny < cellCountY) {
+                    if (grid[ny][nx]) count++;
+                }
+            }
+            
+            return count;
+        }
+
+        // Update the game state
+        function update() {
+            const now = Date.now();
+            
+            // Calculate next generation
+            const nextGrid = Array.from({ length: cellCountY }, () => 
+                Array.from({ length: cellCountX }, () => false)
+            );
+            
+            for (let y = 0; y < cellCountY; y++) {
+                for (let x = 0; x < cellCountX; x++) {
+                    const count = countNeighbors(x, y);
+                    
+                    if (grid[y][x]) {
+                        // Live cell
+                        if (count === 2 || count === 3) {
+                            nextGrid[y][x] = true;
+                        }
+                    } else {
+                        // Dead cell
+                        if (count === 3) {
+                            nextGrid[y][x] = true;
+                        }
+                    }
+                }
+            }
+            
+            // Update the grid and display
+            grid = nextGrid;
+            renderGrid();
+            
+            // Continue simulation or stop
+            if (running) {
+                requestAnimationFrame(update);
+            }
+        }
+
+        // Main initialization function
+        function startGame() {
+            initGrid();
+            running = false;
+            playPauseBtn.innerHTML = '<i class="fas fa-play"></i> Start';
+            
+            // Update the status bar
+            document.querySelector('.status-text').textContent = `Ready. Click cells to toggle, click Play to start simulation`;
+        }
+
+        // Event Listeners
+        document.addEventListener('DOMContentLoaded', () => {
+            // Setup initial game state
+            initGrid();
+            
+            // Add click handlers for cells
+            const cells = document.querySelectorAll('.cell');
+            cells.forEach(cell => {
+                cell.addEventListener('click', (e) => {
+                    const x = parseInt(e.target.dataset.x);
+                    const y = parseInt(e.target.dataset.y);
+                    
+                    grid[y][x] = !grid[y][x];
+                    renderGrid();
+                });
+            });
+            
+            // Setup event listeners
+            resetBtn.addEventListener('click', () => {
+                startGame();
+            });
+            
+            playPauseBtn.addEventListener('click', () => {
+                running = !running;
+                
+                if (running) {
+                    playPauseBtn.innerHTML = '<i class="fas fa-pause"></i> Pause';
+                    document.querySelector('.status-text').textContent = `Running. Click to pause`;
+                    requestAnimationFrame(update);
+                } else {
+                    playPauseBtn.innerHTML = '<i class="fas fa-play"></i> Start';
+                    document.querySelector('.status-text').textContent = `Ready. Click cells to toggle, click Play to start simulation`;
+                }
+            });
+            
+            // Setup speed slider
+            speedSlider.addEventListener('input', () => {
+                const value = parseInt(speedSlider.value);
+                speedDisplay.textContent = `${value}`;
+                
+                // Save for next time
+                localStorage.setItem('game-speed', value);
+            });
+        });
+    </script>
+</body>
+</html>

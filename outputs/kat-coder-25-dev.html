@@ -1,0 +1,566 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Conway's Game of Life</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: #1a1a2e;
+            color: #e0e0e0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        h1 {
+            font-size: 2rem;
+            margin-bottom: 4px;
+            background: linear-gradient(90deg, #00d4ff, #7b2dff);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            letter-spacing: 2px;
+        }
+
+        .subtitle {
+            font-size: 0.85rem;
+            color: #666;
+            margin-bottom: 20px;
+        }
+
+        .container {
+            display: flex;
+            gap: 24px;
+            align-items: flex-start;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        canvas {
+            border: 1px solid #333;
+            cursor: crosshair;
+            border-radius: 4px;
+            box-shadow: 0 0 30px rgba(0, 212, 255, 0.1);
+        }
+
+        .controls {
+            background: #16213e;
+            border-radius: 12px;
+            padding: 24px;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            min-width: 200px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        }
+
+        .controls h2 {
+            font-size: 1rem;
+            color: #00d4ff;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            border-bottom: 1px solid #333;
+            padding-bottom: 8px;
+        }
+
+        .btn-row {
+            display: flex;
+            gap: 8px;
+        }
+
+        button {
+            flex: 1;
+            padding: 10px 16px;
+            border: none;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        button:hover {
+            transform: translateY(-1px);
+        }
+
+        .btn-play {
+            background: linear-gradient(135deg, #00d4ff, #0090b8);
+            color: #000;
+        }
+
+        .btn-play.paused {
+            background: linear-gradient(135deg, #7b2dff, #5a1fbb);
+            color: #fff;
+        }
+
+        .btn-step {
+            background: #2a2a4a;
+            color: #e0e0e0;
+            border: 1px solid #444;
+        }
+
+        .btn-step:hover {
+            background: #3a3a5a;
+        }
+
+        .btn-clear {
+            background: #2a2a4a;
+            color: #e0e0e0;
+            border: 1px solid #444;
+        }
+
+        .btn-clear:hover {
+            background: #4a2a2a;
+        }
+
+        .btn-random {
+            background: #2a2a4a;
+            color: #e0e0e0;
+            border: 1px solid #444;
+        }
+
+        .btn-random:hover {
+            background: #2a3a4a;
+        }
+
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .control-group label {
+            font-size: 0.8rem;
+            color: #888;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        input[type="range"] {
+            width: 100%;
+            accent-color: #00d4ff;
+            cursor: pointer;
+        }
+
+        .speed-value, .density-value {
+            text-align: right;
+            font-size: 0.8rem;
+            color: #00d4ff;
+        }
+
+        .stats {
+            background: #0d1b2a;
+            border-radius: 8px;
+            padding: 12px;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .stat-row {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.85rem;
+        }
+
+        .stat-label {
+            color: #666;
+        }
+
+        .stat-value {
+            color: #00d4ff;
+            font-weight: 600;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .presets h2 {
+            border-bottom: none;
+            margin-top: 8px;
+        }
+
+        .preset-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 6px;
+        }
+
+        .btn-preset {
+            padding: 8px 6px;
+            font-size: 0.75rem;
+            background: #2a2a4a;
+            color: #aaa;
+            border: 1px solid #333;
+        }
+
+        .btn-preset:hover {
+            background: #1e3a5f;
+            color: #00d4ff;
+            border-color: #00d4ff;
+        }
+    </style>
+</head>
+<body>
+    <h1>Conway's Game of Life</h1>
+    <p class="subtitle">Click to toggle cells · Drag to paint</p>
+
+    <div class="container">
+        <canvas id="canvas"></canvas>
+
+        <div class="controls">
+            <h2>Controls</h2>
+
+            <div class="btn-row">
+                <button class="btn-play" id="playBtn">▶ Play</button>
+                <button class="btn-step" id="stepBtn">⏭ Step</button>
+            </div>
+
+            <div class="btn-row">
+                <button class="btn-random" id="randomBtn">🎲 Random</button>
+                <button class="btn-clear" id="clearBtn">✕ Clear</button>
+            </div>
+
+            <div class="control-group">
+                <label>Speed <span class="speed-value" id="speedValue">10 gen/s</span></label>
+                <input type="range" id="speedSlider" min="1" max="60" value="10">
+            </div>
+
+            <div class="control-group">
+                <label>Grid Density <span class="density-value" id="densityValue">12px</span></label>
+                <input type="range" id="densitySlider" min="4" max="30" value="12">
+            </div>
+
+            <div class="stats">
+                <div class="stat-row">
+                    <span class="stat-label">Generation</span>
+                    <span class="stat-value" id="genCount">0</span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">Population</span>
+                    <span class="stat-value" id="popCount">0</span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">Grid Size</span>
+                    <span class="stat-value" id="gridSize">0×0</span>
+                </div>
+            </div>
+
+            <h2>Presets</h2>
+            <div class="preset-grid">
+                <button class="btn-preset" data-preset="glider">Glider</button>
+                <button class="btn-preset" data-preset="lwss">LWSS</button>
+                <button class="btn-preset" data-preset="pulsar">Pulsar</button>
+                <button class="btn-preset" data-preset="pentadecathlon">Pentadecathlon</button>
+                <button class="btn-preset" data-preset="gosper">Gosper Gun</button>
+                <button class="btn-preset" data-preset="rpentomino">R-pentomino</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+
+        let cellSize = 12;
+        let cols, rows;
+        let grid, nextGrid;
+        let generation = 0;
+        let running = false;
+        let speed = 10;
+        let lastFrameTime = 0;
+        let animationId = null;
+        let isDrawing = false;
+        let drawValue = 1;
+
+        const canvasSize = Math.min(window.innerWidth - 280, window.innerHeight - 160, 700);
+        cellSize = parseInt(document.getElementById('densitySlider').value);
+        cols = Math.floor(canvasSize / cellSize);
+        rows = Math.floor(canvasSize / cellSize);
+        canvas.width = cols * cellSize;
+        canvas.height = rows * cellSize;
+
+        function createGrid(fill = false) {
+            const g = new Array(rows);
+            for (let r = 0; r < rows; r++) {
+                g[r] = new Uint8Array(cols);
+                if (fill) {
+                    for (let c = 0; c < cols; c++) {
+                        g[r][c] = Math.random() < 0.3 ? 1 : 0;
+                    }
+                }
+            }
+            return g;
+        }
+
+        grid = createGrid();
+        nextGrid = createGrid();
+
+        function countNeighbors(g, r, c) {
+            let count = 0;
+            for (let dr = -1; dr <= 1; dr++) {
+                for (let dc = -1; dc <= 1; dc++) {
+                    if (dr === 0 && dc === 0) continue;
+                    const nr = r + dr;
+                    const nc = c + dc;
+                    if (nr >= 0 && nr < rows && nc >= 0 && nc < cols) {
+                        count += g[nr][nc];
+                    }
+                }
+            }
+            return count;
+        }
+
+        function step() {
+            for (let r = 0; r < rows; r++) {
+                for (let c = 0; c < cols; c++) {
+                    const n = countNeighbors(grid, r, c);
+                            if (grid[r][c]) {
+                        nextGrid[r][c] = (n === 2 || n === 3) ? 1 : 0;
+                    } else {
+                        nextGrid[r][c] = (n === 3) ? 1 : 0;
+                    }
+                }
+            }
+            [grid, nextGrid] = [nextGrid, grid];
+            generation++;
+        }
+
+        function draw() {
+            ctx.fillStyle = '#0d1b2a';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Draw grid lines
+            ctx.strokeStyle = '#1a2a3a';
+            ctx.lineWidth = 0.5;
+            for (let c = 0; c <= cols; c++) {
+                ctx.beginPath();
+                ctx.moveTo(c * cellSize, 0);
+                ctx.lineTo(c * cellSize, canvas.height);
+                ctx.stroke();
+            }
+            for (let r = 0; r <= rows; r++) {
+                ctx.beginPath();
+                ctx.moveTo(0, r * cellSize);
+                ctx.lineTo(canvas.width, r * cellSize);
+                ctx.stroke();
+            }
+
+            // Draw cells
+            let population = 0;
+            for (let r = 0; r < rows; r++) {
+                for (let c = 0; c < cols; c++) {
+                    if (grid[r][c]) {
+                        population++;
+                        const x = c * cellSize;
+                        const y = r * cellSize;
+                        const padding = cellSize > 6 ? 1 : 0;
+
+                        // Glow effect for alive cells
+                        ctx.shadowColor = '#00d4ff';
+                        ctx.shadowBlur = cellSize > 8 ? 8 : 0;
+                        ctx.fillStyle = '#00d4ff';
+                        ctx.fillRect(x + padding, y + padding, cellSize - padding * 2, cellSize - padding * 2);
+                        ctx.shadowBlur = 0;
+
+                        // Inner highlight
+                        if (cellSize > 10) {
+                            ctx.fillStyle = '#66e8ff';
+                            ctx.fillRect(x + padding + 1, y + padding + 1, (cellSize - padding * 2) / 2, (cellSize - padding * 2) / 2);
+                        }
+                    }
+                }
+            }
+
+            document.getElementById('genCount').textContent = generation;
+            document.getElementById('popCount').textContent = population;
+            document.getElementById('gridSize').textContent = `${cols}×${rows}`;
+        }
+
+        function gameLoop(timestamp) {
+            if (!running) return;
+            const interval = 1000 / speed;
+            if (timestamp - lastFrameTime >= interval) {
+                step();
+                draw();
+                lastFrameTime = timestamp;
+            }
+            animationId = requestAnimationFrame(gameLoop);
+        }
+
+        function start() {
+            if (running) return;
+            running = true;
+            document.getElementById('playBtn').textContent = '⏸ Pause';
+            document.getElementById('playBtn').classList.add('paused');
+            lastFrameTime = performance.now();
+            animationId = requestAnimationFrame(gameLoop);
+        }
+
+        function stop() {
+            running = false;
+            document.getElementById('playBtn').textContent = '▶ Play';
+            document.getElementById('playBtn').classList.remove('paused');
+            if (animationId) cancelAnimationFrame(animationId);
+        }
+
+        canvas.addEventListener('mousedown', (e) => {
+            isDrawing = true;
+            const rect = canvas.getBoundingClientRect();
+            const c = Math.floor((e.clientX - rect.left) / cellSize);
+            const r = Math.floor((e.clientY - rect.top) / cellSize);
+            if (r >= 0 && r < rows && c >= 0 && c < cols) {
+                drawValue = grid[r][c] ? 0 : 1;
+                grid[r][c] = drawValue;
+                draw();
+            }
+        });
+
+        canvas.addEventListener('mousemove', (e) => {
+            if (!isDrawing) return;
+            const rect = canvas.getBoundingClientRect();
+            const c = Math.floor((e.clientX - rect.left) / cellSize);
+            const r = Math.floor((e.clientY - rect.top) / cellSize);
+            if (r >= 0 && r < rows && c >= 0 && c < cols) {
+                grid[r][c] = drawValue;
+                draw();
+            }
+        });
+
+        window.addEventListener('mouseup', () => isDrawing = false);
+
+        document.getElementById('playBtn').addEventListener('click', () => {
+            if (running) stop(); else start();
+        });
+
+        document.getElementById('stepBtn').addEventListener('click', () => {
+            stop();
+            step();
+            draw();
+        });
+
+        document.getElementById('randomBtn').addEventListener('click', () => {
+            grid = createGrid(true);
+            generation = 0;
+            draw();
+        });
+
+        document.getElementById('clearBtn').addEventListener('click', () => {
+            stop();
+            grid = createGrid();
+            generation = 0;
+            draw();
+        });
+
+        document.getElementById('speedSlider').addEventListener('input', (e) => {
+            speed = parseInt(e.target.value);
+            document.getElementById('speedValue').textContent = `${speed} gen/s`;
+        });
+
+        document.getElementById('densitySlider').addEventListener('change', (e) => {
+            const newCellSize = parseInt(e.target.value);
+            const oldCols = cols;
+            const oldRows = rows;
+            cellSize = newCellSize;
+            cols = Math.floor(canvasSize / cellSize);
+            rows = Math.floor(canvasSize / cellSize);
+            canvas.width = cols * cellSize;
+            canvas.height = rows * cellSize;
+
+            const newGrid = createGrid();
+            const minCols = Math.min(oldCols, cols);
+            const minRows = Math.min(oldRows, rows);
+            for (let r = 0; r < minRows; r++) {
+                for (let c = 0; c < minCols; c++) {
+                    newGrid[r][c] = grid[r][c];
+                }
+            }
+            grid = newGrid;
+            document.getElementById('densityValue').textContent = `${cellSize}px`;
+            draw();
+        });
+
+        document.getElementById('densitySlider').addEventListener('input', (e) => {
+            document.getElementById('densityValue').textContent = `${e.target.value}px`;
+        });
+
+        // Presets
+        const presets = {
+            glider: [[0,1],[1,2],[2,0],[2,1],[2,2]],
+            lwss: [[0,1],[0,4],[1,0],[2,0],[3,0],[4,0],[4,1],[4,2],[4,3],[3,4],[2,4],[1,4]],
+            pulsar: (function() {
+                const p = [];
+                const pts = [
+                    [2,4],[2,5],[2,6],[2,10],[2,11],[2,12],
+                    [4,2],[5,2],[6,2],[4,7],[5,7],[6,7],[4,10],[5,10],[6,10],[4,15],[5,15],[6,15],
+                    [7,4],[7,5],[7,6],[7,10],[7,11],[7,12],
+                    [10,2],[11,2],[12,2],[10,7],[11,7],[12,7],[10,10],[11,10],[12,10],[10,15],[11,15],[12,15],
+                    [15,4],[15,5],[15,6],[15,10],[15,11],[15,12],
+                ];
+                return pts.map(([r,c]) => [r,c]);
+            })(),
+            pentadecathlon: [[0,1],[1,1],[2,0],[2,2],[3,1],[4,1],[5,1],[6,1],[7,0],[7,2],[8,1],[9,1]],
+            gosper: (function() {
+                const pts = [
+                    [0,24],[1,22],[1,24],[2,12],[2,13],[2,20],[2,21],[2,34],[2,35],
+                    [3,11],[3,15],[3,20],[3,21],[3,34],[3,35],[4,0],[4,1],[4,10],
+                    [4,16],[4,20],[4,21],[5,0],[5,1],[5,10],[5,14],[5,16],[5,17],
+                    [5,22],[5,24],[6,10],[6,16],[6,22],[6,24],[7,11],[7,15],[8,12],[8,13]
+                ];
+                return pts;
+            })(),
+            rpentomino: [[0,1],[0,2],[1,0],[1,1],[2,1]]
+        };
+
+        document.querySelectorAll('.btn-preset').forEach(btn => {
+            btn.addEventListener('click', () => {
+                stop();
+                grid = createGrid();
+                const pts = presets[btn.dataset.preset];
+                const offsetR = Math.floor(rows / 2) - 10;
+                const offsetC = Math.floor(cols / 2) - 10;
+                for (const [r, c] of pts) {
+                    const nr = r + offsetR;
+                    const nc = c + offsetC;
+                    if (nr >= 0 && nr < rows && nc >= 0 && nc < cols) {
+                        grid[nr][nc] = 1;
+                    }
+                }
+                generation = 0;
+                draw();
+            });
+        });
+
+        // Keyboard shortcuts
+        window.addEventListener('keydown', (e) => {
+            if (e.code === 'Space') {
+                e.preventDefault();
+                if (running) stop(); else start();
+            } else if (e.code === 'KeyN') {
+                stop();
+                step();
+                draw();
+            } else if (e.code === 'KeyC') {
+                stop();
+                grid = createGrid();
+                generation = 0;
+                draw();
+            } else if (e.code === 'KeyR') {
+                stop();
+                grid = createGrid(true);
+                generation = 0;
+                draw();
+            }
+        });
+
+        draw();
+    </script>
+</body>
+</html>

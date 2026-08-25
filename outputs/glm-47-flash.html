@@ -1,0 +1,725 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Conway's Game of Life - Interactive Edition</title>
+    <style>
+        :root {
+            --bg-color: #121212;
+            --panel-bg: rgba(30, 30, 30, 0.85);
+            --text-color: #e0e0e0;
+            --accent-color: #00ff9d;
+            --accent-hover: #00cc7d;
+            --danger-color: #ff4757;
+            --grid-line: #2a2a2a;
+            --font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            user-select: none; /* Prevent text selection while drawing */
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            font-family: var(--font-family);
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        /* Header */
+        header {
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: linear-gradient(to bottom, #1e1e1e, #121212);
+            border-bottom: 1px solid #333;
+            z-index: 10;
+        }
+
+        h1 {
+            font-size: 1.5rem;
+            font-weight: 600;
+            letter-spacing: 1px;
+            color: var(--accent-color);
+            text-transform: uppercase;
+        }
+
+        .stats {
+            font-size: 0.9rem;
+            color: #888;
+        }
+
+        .stats span {
+            color: var(--text-color);
+            font-weight: bold;
+        }
+
+        /* Main Canvas Area */
+        main {
+            flex: 1;
+            position: relative;
+            cursor: crosshair;
+            overflow: hidden;
+        }
+
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+
+        /* Controls Panel */
+        .controls {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: var(--panel-bg);
+            backdrop-filter: blur(10px);
+            padding: 15px 25px;
+            border-radius: 50px;
+            display: flex;
+            gap: 20px;
+            align-items: center;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            border: 1px solid #333;
+            flex-wrap: wrap;
+            justify-content: center;
+            width: 90%;
+            max-width: 800px;
+        }
+
+        /* Control Groups */
+        .control-group {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .divider {
+            width: 1px;
+            height: 24px;
+            background-color: #444;
+        }
+
+        /* Buttons */
+        button {
+            background-color: #333;
+            color: var(--text-color);
+            border: none;
+            padding: 10px 20px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            font-weight: 500;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        button:hover {
+            background-color: #444;
+            transform: translateY(-2px);
+        }
+
+        button:active {
+            transform: translateY(0);
+        }
+
+        button.primary {
+            background-color: var(--accent-color);
+            color: #000;
+        }
+
+        button.primary:hover {
+            background-color: var(--accent-hover);
+            box-shadow: 0 0 15px rgba(0, 255, 157, 0.4);
+        }
+
+        button.danger {
+            color: var(--danger-color);
+            border: 1px solid var(--danger-color);
+            background: transparent;
+        }
+
+        button.danger:hover {
+            background: var(--danger-color);
+            color: white;
+        }
+
+        /* Select Dropdown */
+        select {
+            background-color: #333;
+            color: var(--text-color);
+            border: 1px solid #444;
+            padding: 10px;
+            border-radius: 8px;
+            font-family: inherit;
+            cursor: pointer;
+            outline: none;
+        }
+
+        select:focus {
+            border-color: var(--accent-color);
+        }
+
+        /* Sliders */
+        .slider-container {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+            min-width: 120px;
+        }
+
+        .slider-label {
+            font-size: 0.75rem;
+            color: #aaa;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        input[type="range"] {
+            -webkit-appearance: none;
+            width: 100%;
+            height: 6px;
+            background: #444;
+            border-radius: 3px;
+            outline: none;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 16px;
+            height: 16px;
+            background: var(--accent-color);
+            border-radius: 50%;
+            cursor: pointer;
+            transition: transform 0.1s;
+        }
+
+        input[type="range"]::-webkit-slider-thumb:hover {
+            transform: scale(1.2);
+        }
+
+        /* Toast Notification */
+        .toast {
+            position: fixed;
+            top: 80px;
+            right: 20px;
+            background-color: #333;
+            color: white;
+            padding: 12px 24px;
+            border-radius: 8px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+            border-left: 4px solid var(--accent-color);
+            transform: translateX(120%);
+            transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            z-index: 100;
+        }
+
+        .toast.show {
+            transform: translateX(0);
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            header {
+                flex-direction: column;
+                gap: 10px;
+                align-items: flex-start;
+            }
+            
+            .controls {
+                width: 95%;
+                bottom: 10px;
+                padding: 10px;
+                gap: 10px;
+                border-radius: 20px;
+            }
+
+            button {
+                padding: 8px 12px;
+                font-size: 0.8rem;
+            }
+
+            .slider-container {
+                min-width: 80px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>Game of Life</h1>
+        <div class="stats">Generation: <span id="gen-count">0</span> | Population: <span id="pop-count">0</span></div>
+    </header>
+
+    <main id="canvas-container">
+        <canvas id="gameCanvas"></canvas>
+    </main>
+
+    <div class="controls">
+        <div class="control-group">
+            <button id="btn-toggle" class="primary">
+                <svg width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+                    <path d="M10.804 8 5 4.633v6.734L10.804 8zm.792-.696a.802.802 0 0 1 0 1.392l-6.363 3.692C4.713 12.69 4 12.345 4 11.692V4.308c0-.653.713-.998 1.233-.696l6.363 3.692z"/>
+                </svg>
+                Start
+            </button>
+            <button id="btn-step">
+                <svg width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+                    <path d="M4 8a.5.5 0 0 1 .5-.5h7a.5.5 0 0 1 0 1h-7A.5.5 0 0 1 4 8z"/>
+                </svg>
+                Step
+            </button>
+        </div>
+
+        <div class="divider"></div>
+
+        <div class="control-group">
+            <select id="pattern-select">
+                <option value="" disabled selected>Load Pattern</option>
+                <option value="random">Randomize</option>
+                <option value="glider">Glider</option>
+                <option value="lwss">Lightweight Spaceship</option>
+                <option value="pulsar">Pulsar</option>
+                <option value="gosper">Gosper Glider Gun</option>
+            </select>
+        </div>
+
+        <div class="divider"></div>
+
+        <div class="control-group">
+            <button id="btn-clear" class="danger">Clear</button>
+        </div>
+
+        <div class="divider"></div>
+
+        <div class="control-group slider-container">
+            <div class="slider-label">
+                <span>Speed</span>
+                <span id="speed-val">50ms</span>
+            </div>
+            <input type="range" id="speed-range" min="10" max="500" value="50" step="10">
+        </div>
+    </div>
+
+    <div id="toast" class="toast">Action completed</div>
+
+    <script>
+        /**
+         * Game of Life Logic & Rendering
+         */
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d', { alpha: false }); // Optimize for no transparency on base
+        const container = document.getElementById('canvas-container');
+        
+        // UI Elements
+        const btnToggle = document.getElementById('btn-toggle');
+        const btnStep = document.getElementById('btn-step');
+        const btnClear = document.getElementById('btn-clear');
+        const btnRandom = document.getElementById('btn-random'); // Not in HTML but useful
+        const patternSelect = document.getElementById('pattern-select');
+        const speedRange = document.getElementById('speed-range');
+        const speedVal = document.getElementById('speed-val');
+        const genCountEl = document.getElementById('gen-count');
+        const popCountEl = document.getElementById('pop-count');
+        const toastEl = document.getElementById('toast');
+
+        // Configuration
+        let resolution = 10; // Size of each cell in pixels
+        let cols, rows;
+        let grid = [];
+        let isRunning = false;
+        let animationId;
+        let generation = 0;
+        let lastFrameTime = 0;
+        let fpsInterval = 50; // ms per frame (lower is faster)
+        
+        // Mouse Interaction
+        let isDrawing = false;
+        let drawMode = 1; // 1 = alive, 0 = dead
+
+        // --- Initialization ---
+
+        function init() {
+            resizeCanvas();
+            createGrid();
+            randomizeGrid();
+            draw();
+            showToast("Welcome! Click and drag to draw cells.");
+        }
+
+        function resizeCanvas() {
+            canvas.width = container.clientWidth;
+            canvas.height = container.clientHeight;
+            
+            // Recalculate grid dimensions
+            cols = Math.ceil(canvas.width / resolution);
+            rows = Math.ceil(canvas.height / resolution);
+            
+            // Re-initialize grid if size changes drastically, 
+            // or we could try to preserve data. For simplicity, we reset.
+            if (grid.length === 0 || grid.length !== cols || grid[0].length !== rows) {
+                createGrid();
+            }
+        }
+
+        function createGrid() {
+            grid = new Array(cols).fill(null).map(() => new Array(rows).fill(0));
+            generation = 0;
+            updateStats();
+        }
+
+        // --- Core Logic ---
+
+        function computeNextGen() {
+            let nextGrid = grid.map(arr => [...arr]); // Deep copy
+            let hasChanges = false;
+
+            for (let i = 0; i < cols; i++) {
+                for (let j = 0; j < rows; j++) {
+                    let state = grid[i][j];
+                    let neighbors = countNeighbors(grid, i, j);
+
+                    // Rules
+                    if (state === 0 && neighbors === 3) {
+                        nextGrid[i][j] = 1; // Reproduction
+                        hasChanges = true;
+                    } else if (state === 1 && (neighbors < 2 || neighbors > 3)) {
+                        nextGrid[i][j] = 0; // Under/Over population
+                        hasChanges = true;
+                    } else {
+                        nextGrid[i][j] = state; // Stasis
+                    }
+                }
+            }
+
+            grid = nextGrid;
+            if (hasChanges) {
+                generation++;
+                updateStats();
+            }
+        }
+
+        function countNeighbors(grid, x, y) {
+            let sum = 0;
+            for (let i = -1; i < 2; i++) {
+                for (let j = -1; j < 2; j++) {
+                    let col = (x + i + cols) % cols; // Wrap around edges (Toroidal)
+                    let row = (y + j + rows) % rows;
+                    sum += grid[col][row];
+                }
+            }
+            sum -= grid[x][y];
+            return sum;
+        }
+
+        // --- Rendering ---
+
+        function draw() {
+            // Clear background
+            ctx.fillStyle = '#121212';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Draw Grid Lines (Optional, subtle)
+            ctx.strokeStyle = '#1e1e1e';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            for (let i = 0; i <= cols; i++) {
+                ctx.moveTo(i * resolution, 0);
+                ctx.lineTo(i * resolution, canvas.height);
+            }
+            for (let j = 0; j <= rows; j++) {
+                ctx.moveTo(0, j * resolution);
+                ctx.lineTo(canvas.width, j * resolution);
+            }
+            ctx.stroke();
+
+            // Draw Living Cells
+            ctx.fillStyle = '#00ff9d';
+            // Add a slight glow effect
+            ctx.shadowBlur = 10;
+            ctx.shadowColor = '#00ff9d';
+
+            for (let i = 0; i < cols; i++) {
+                for (let j = 0; j < rows; j++) {
+                    if (grid[i][j] === 1) {
+                        // Draw slightly smaller than resolution for grid effect
+                        ctx.fillRect(
+                            i * resolution + 1, 
+                            j * resolution + 1, 
+                            resolution - 2, 
+                            resolution - 2
+                        );
+                    }
+                }
+            }
+            
+            // Reset shadow for next frame performance
+            ctx.shadowBlur = 0;
+        }
+
+        // --- Game Loop ---
+
+        function gameLoop(timestamp) {
+            if (!isRunning) return;
+
+            animationId = requestAnimationFrame(gameLoop);
+
+            let elapsed = timestamp - lastFrameTime;
+
+            if (elapsed > fpsInterval) {
+                lastFrameTime = timestamp - (elapsed % fpsInterval);
+                computeNextGen();
+                draw();
+            }
+        }
+
+        function togglePlay() {
+            isRunning = !isRunning;
+            if (isRunning) {
+                btnToggle.innerHTML = `
+                    <svg width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+                        <path d="M5.5 3.5A1.5 1.5 0 0 1 7 5v6a1.5 1.5 0 0 1-3 0V5a1.5 1.5 0 0 1 1.5-1.5zm5 0A1.5 1.5 0 0 1 12 5v6a1.5 1.5 0 0 1-3 0V5a1.5 1.5 0 0 1 1.5-1.5z"/>
+                    </svg> Pause`;
+                btnToggle.classList.remove('primary');
+                lastFrameTime = performance.now();
+                gameLoop(lastFrameTime);
+                showToast("Simulation Started");
+            } else {
+                btnToggle.innerHTML = `
+                    <svg width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+                        <path d="M10.804 8 5 4.633v6.734L10.804 8zm.792-.696a.802.802 0 0 1 0 1.392l-6.363 3.692C4.713 12.69 4 12.345 4 11.692V4.308c0-.653.713-.998 1.233-.696l6.363 3.692z"/>
+                    </svg> Start`;
+                btnToggle.classList.add('primary');
+                cancelAnimationFrame(animationId);
+                showToast("Simulation Paused");
+            }
+        }
+
+        // --- Interaction Handlers ---
+
+        function updateStats() {
+            genCountEl.textContent = generation;
+            let pop = 0;
+            for(let i=0; i<cols; i++) {
+                for(let j=0; j<rows; j++) {
+                    if(grid[i][j]) pop++;
+                }
+            }
+            popCountEl.textContent = pop;
+        }
+
+        function getGridPos(evt) {
+            const rect = canvas.getBoundingClientRect();
+            const x = evt.clientX - rect.left;
+            const y = evt.clientY - rect.top;
+            const i = Math.floor(x / resolution);
+            const j = Math.floor(y / resolution);
+            return { i, j };
+        }
+
+        function paintCell(evt) {
+            const { i, j } = getGridPos(evt);
+            if (i >= 0 && i < cols && j >= 0 && j < rows) {
+                grid[i][j] = drawMode;
+                draw();
+                updateStats();
+            }
+        }
+
+        // Mouse Events
+        canvas.addEventListener('mousedown', (e) => {
+            isDrawing = true;
+            const { i, j } = getGridPos(e);
+            // Determine draw mode based on what we clicked on
+            if (i >= 0 && i < cols && j >= 0 && j < rows) {
+                drawMode = grid[i][j] ? 0 : 1;
+                paintCell(e);
+            }
+        });
+
+        window.addEventListener('mouseup', () => {
+            isDrawing = false;
+        });
+
+        canvas.addEventListener('mousemove', (e) => {
+            if (isDrawing) {
+                paintCell(e);
+            }
+        });
+
+        // Touch Events (Mobile)
+        canvas.addEventListener('touchstart', (e) => {
+            e.preventDefault(); // Prevent scrolling
+            isDrawing = true;
+            const touch = e.touches[0];
+            const mouseEvent = new MouseEvent("mousedown", {
+                clientX: touch.clientX,
+                clientY: touch.clientY
+            });
+            canvas.dispatchEvent(mouseEvent);
+        }, { passive: false });
+
+        canvas.addEventListener('touchmove', (e) => {
+            e.preventDefault();
+            if (isDrawing) {
+                const touch = e.touches[0];
+                const mouseEvent = new MouseEvent("mousemove", {
+                    clientX: touch.clientX,
+                    clientY: touch.clientY
+                });
+                canvas.dispatchEvent(mouseEvent);
+            }
+        }, { passive: false });
+
+        canvas.addEventListener('touchend', () => {
+            isDrawing = false;
+        });
+
+        // --- Controls Logic ---
+
+        btnToggle.addEventListener('click', togglePlay);
+
+        btnStep.addEventListener('click', () => {
+            if (isRunning) togglePlay(); // Pause if running
+            computeNextGen();
+            draw();
+            updateStats();
+        });
+
+        btnClear.addEventListener('click', () => {
+            if (isRunning) togglePlay();
+            createGrid();
+            draw();
+            showToast("Board Cleared");
+        });
+
+        patternSelect.addEventListener('change', (e) => {
+            const val = e.target.value;
+            if (val === 'random') {
+                randomizeGrid();
+                showToast("Randomized");
+            } else {
+                loadPattern(val);
+            }
+            // Reset selection
+            e.target.value = "";
+        });
+
+        speedRange.addEventListener('input', (e) => {
+            // Invert logic: lower value = faster speed (lower ms interval)
+            // But UI shows "Speed" so higher value = faster
+            // Let's map 10 (fast) to 500 (slow)
+            const val = parseInt(e.target.value);
+            fpsInterval = 510 - val; 
+            speedVal.textContent = val + "ms";
+        });
+
+        // --- Helpers ---
+
+        function randomizeGrid() {
+            for (let i = 0; i < cols; i++) {
+                for (let j = 0; j < rows; j++) {
+                    grid[i][j] = Math.random() > 0.85 ? 1 : 0; // 15% chance of life
+                }
+            }
+            generation = 0;
+            draw();
+            updateStats();
+        }
+
+        function loadPattern(type) {
+            // Center the pattern
+            const cx = Math.floor(cols / 2);
+            const cy = Math.floor(rows / 2);
+
+            const patterns = {
+                'glider': [[0, -1], [1, 0], [-1, 1], [0, 1], [1, 1]],
+                'lwss': [[-1, 0], [-1, 3], [0, -1], [1, -1], [2, -1], [3, -1], [3, 0], [3, 1], [3, 2], [2, 3], [1, 3], [0, 3]],
+                'pulsar': generatePulsar(cx, cy),
+                'gosper': generateGosper(cx, cy)
+            };
+
+            if (patterns[type]) {
+                if (type === 'pulsar' || type === 'gosper') {
+                    // Clear first
+                    grid = new Array(cols).fill(null).map(() => new Array(rows).fill(0));
+                    // Draw specific offsets
+                    patterns[type].forEach(([x, y]) => {
+                        if (cx + x >= 0 && cx + x < cols && cy + y >= 0 && cy + y < rows) {
+                            grid[cx + x][cy + y] = 1;
+                        }
+                    });
+                } else {
+                    // Standard patterns
+                    grid = new Array(cols).fill(null).map(() => new Array(rows).fill(0));
+                    patterns[type].forEach(([x, y]) => {
+                        if (cx + x >= 0 && cx + x < cols && cy + y >= 0 && cy + y < rows) {
+                            grid[cx + x][cy + y] = 1;
+                        }
+                    });
+                }
+                draw();
+                updateStats();
+                showToast(`Loaded ${type}`);
+            }
+        }
+
+        function generatePulsar(cx, cy) {
+            // Simplified Pulsar definition (just a few lines for brevity)
+            // A full pulsar is complex, this is a simplified blocky version
+            let p = [];
+            // Cross arms
+            for(let i=-4; i<=4; i++) {
+                p.push([i, -6]); p.push([i, -5]); p.push([i, 5]); p.push([i, 6]);
+                p.push([-6, i]); p.push([-5, i]); p.push([5, i]); p.push([6, i]);
+            }
+            return p;
+        }
+
+        function generateGosper(cx, cy) {
+            // Gosper Glider Gun coordinates
+            let g = [
+                [24,0], [22,1], [24,1], [12,2], [13,2], [20,2], [21,2], [34,2], [35,2], [11,3], [15,3], [20,3], [21,3], [34,3], [35,3],
+                [0,4], [1,4], [10,4], [16,4], [20,4], [21,4], [0,5], [1,5], [10,5], [14,5], [16,5], [17,5], [22,5], [24,5],
+                [10,6], [16,6], [24,6], [11,7], [15,7], [12,8], [13,8]
+            ];
+            return g;
+        }
+
+        function showToast(msg) {
+            toastEl.textContent = msg;
+            toastEl.classList.add('show');
+            setTimeout(() => {
+                toastEl.classList.remove('show');
+            }, 2000);
+        }
+
+        // Window Resize Handling
+        let resizeTimeout;
+        window.addEventListener('resize', () => {
+            clearTimeout(resizeTimeout);
+            resizeTimeout = setTimeout(() => {
+                resizeCanvas();
+                draw();
+            }, 200);
+        });
+
+        // Start
+        init();
+
+    </script>
+</body>
+</html>
