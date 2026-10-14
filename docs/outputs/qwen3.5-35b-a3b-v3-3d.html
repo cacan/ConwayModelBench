@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D Conway's Game of Life</title>
+    <style>
+        body { margin: 0; overflow: hidden; background-color: #111; font-family: 'Segoe UI', sans-serif; }
+        
+        /* UI Overlay */
+        #ui-container {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            z-index: 10;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 15px;
+            border-radius: 8px;
+            color: white;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+            backdrop-filter: blur(5px);
+        }
+
+        h1 { margin: 0 0 10px 0; font-size: 18px; color: #00ffcc; text-transform: uppercase; letter-spacing: 2px;}
+        
+        .controls { display: flex; gap: 5px; flex-wrap: wrap; }
+
+        button {
+            background: #333;
+            border: 1px solid #444;
+            color: white;
+            padding: 8px 12px;
+            cursor: pointer;
+            border-radius: 4px;
+            font-weight: bold;
+            transition: all 0.2s;
+        }
+
+        button:hover { background: #555; transform: translateY(-1px); }
+        button:active { transform: translateY(0); }
+        
+        button.active { background: #00ffcc; color: black; border-color: #00ffcc; }
+        button.danger { background: #ff4444; border-color: #aa2222; }
+
+        .info { margin-top: 15px; font-size: 12px; color: #aaa; line-height: 1.4;}
+    </style>
+</head>
+<body>
+
+<div id="ui-container">
+    <h1>3D Game of Life</h1>
+    
+    <div class="controls">
+        <button id="btn-play" onclick="togglePlay()">Play</button>
+        <button onclick="stepOnce()">Step</button>
+        <button onclick="randomize()">Random</button>
+        <button class="danger" onclick="clearGrid()">Clear</button>
+    </div>
+
+    <div class="info">
+        Left Click + Drag to Rotate<br>
+        Right Click to Pan<br>
+        Scroll to Zoom<br>
+        <br>
+        Click on the grid floor to toggle cells.
+    </div>
+</div>
+
+<!-- Import Three.js from CDN -->
+<script type="importmap">
+  {
+    "imports": {
+      "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+      "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+    }
+  }
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+// --- CONFIGURATION ---
+const GRID_SIZE = 35; // Must be odd to center nicely, or even is fine too. 
+                      // We will create a centered grid of this size.
+const CELL_SPACING = 1.2; // Slight gap between cubes for visibility
+let ALIVE_COLOR = new THREE.Color(0x00ffcc); // Neon Cyan
+let DEAD_COLOR = new THREE.Color(0x333333);
+
+// --- GLOBALS ---
+let scene, camera, renderer, controls;
+let gridData = []; // 2D array storing boolean states (true=alive)
+let instancedMesh;
+const dummy = new THREE.Object3D(); // Helper for matrix calculations
+let isPlaying = false;
+let animationId;
+
+// --- INITIALIZATION ---
+function init() {
+    // 1. Scene Setup
+    scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x1a1a1a);
+    
+    // Fog for depth perception
+    scene.fog = new THREE.FogExp2(0x1a1a1a, 0.035);
+
+    // 2. Camera
+    camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 100);
+    camera.position.set(GRID_SIZE * CELL_SPACING, GRID_SIZE * CELL_SPACING, GRID_SIZE * CELL_SPACING);
+    
+    // 3. Renderer
+    renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    document.body.appendChild(renderer.domElement);
+
+    // 4. Controls (Orbit)
+    controls = new OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true; 
+    controls.dampingFactor = 0.05;
+
+    // 5. Lights
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+    scene.add(ambientLight);
+
+    const dirLight = new THREE.DirectionalLight(0xffffff, 1);
+    dirLight.position.set(20, 50, 20);
+    scene.add(dirLight);
+
+    // 6. The Floor (Invisible hit target for clicking)
+    const planeGeometry = new THREE.PlaneGeometry(GRID_SIZE * CELL_SPACING + 2, GRID_SIZE * CELL_SPACING + 2);
+    const planeMaterial = new THREE.MeshBasicMaterial({ visible: false }); // Invisible
+    const floor = new THREE.Mesh(planeGeometry, planeMaterial);
+    floor.rotation.x = -Math.PI / 2;
+    scene.add(floor);
+
+    // Add a visual grid helper on the "floor"
+    const gridHelper = new THREE.GridHelper(GRID_SIZE * CELL_SPACING + 2, GRID_SIZE, 0x444444, 0x222222);
+    gridHelper.rotation.x = -Math.PI / 2; 
+    scene.add(gridHelper);
+
+    // 7. The 3D Grid (InstancedMesh)
+    const geometry = new THREE.BoxGeometry(CELL_SPACING * 0.9, CELL_SPACING * 0.9, CELL_SPACING * 0.9);
+    const material = new THREE.MeshStandardMaterial({ 
+        color: DEAD_COLOR,
+        roughness: 0.4,
+        metalness: 0.3
+    });
+
+    // Total count is GRID_SIZE squared
+    instancedMesh = new THREE.InstancedMesh(geometry, material, (GRID_SIZE * GRID_SIZE));
+    
+    // Center the mesh so it sits at 0,0,0
+    const offset = (GRID_SIZE - 1) * CELL_SPACING / 2;
+    instancedMesh.position.set(-offset, -CELL_SPACING/2.5, -offset); 
+    // Note: We push Y down slightly so cubes sit ON the floor
+    
+    scene.add(instancedMesh);
+
+    // Initialize Logic Data
+    initLogic();
+
+    // Event Listeners
+    window.addEventListener('resize', onWindowResize);
+    
+    // Interaction (Click to toggle)
+    renderer.domElement.addEventListener('click', onMouseClick, false);
+
+    // Start Loop
+    animate();
+}
+
+// --- GAME LOGIC ---
+
+function initLogic() {
+    gridData = [];
+    for(let x=0; x<GRID_SIZE; x++) {
+        let row = [];
+        for(let y=0; y<GRID_SIZE; y++) {
+            row.push(false); // Dead by default
+        }
+        gridData.push(row);
+    }
+    updateVisuals();
+}
+
+function randomize() {
+    isPlaying = false;
+    document.getElementById('btn-play').innerText = "Play";
+    
+    for(let x=0; x<GRID_SIZE; x++) {
+        for(let y=0; y<GRID_SIZE; y++) {
+            // 30% chance of being alive initially
+            gridData[x][y] = Math.random() > 0.7; 
+        }
+    }
+    updateVisuals();
+}
+
+function clearGrid() {
+    isPlaying = false;
+    document.getElementById('btn-play').innerText = "Play";
+    
+    for(let x=0; x<GRID_SIZE; x++) {
+        for(let y=0; y<GRID_SIZE; y++) {
+            gridData[x][y] = false; 
+        }
+    }
+    updateVisuals();
+}
+
+function stepOnce() {
+    if(!isPlaying) {
+        togglePlay(); // If not playing, start it briefly then stop? No, just run one frame.
+        isPlaying = true;
+    }
+    computeNextGen();
+    updateVisuals();
+    
+    // Auto pause after one step for clarity
+    isPlaying = false; 
+    document.getElementById('btn-play').innerText = "Play";
+}
+
+function togglePlay() {
+    if(isPlaying) {
+        isPlaying = false;
+        document.getElementById('btn-play').innerText = "Play";
+        document.getElementById('btn-play').classList.remove('active');
+    } else {
+        isPlaying = true;
+        document.getElementById('btn-play').innerText = "Pause";
+        document.getElementById('btn-play').classList.add('active');
+    }
+}
+
+// The Core Algorithm
+function computeNextGen() {
+    // Create a new grid for the next state to avoid conflicts during calculation
+    const nextGrid = [];
+    for(let x=0; x<GRID_SIZE; x++) {
+        let row = [];
+        for(let y=0; y<GRID_SIZE; y++) {
+            row.push(false);
+        }
+        nextGrid.push(row);
+    }
+
+    // Loop through every cell
+    for (let i = 0; i < GRID_SIZE; i++) {
+        for (let j = 0; j < GRID_SIZE; j++) {
+            
+            let neighbors = countNeighbors(i, j);
+            const isAlive = gridData[i][j];
+
+            // Rule 1: Underpopulation
+            if (isAlive && neighbors < 2) {
+                nextGrid[i][j] = false;
+            } 
+            // Rule 2: Survival
+            else if (isAlive && (neighbors === 2 || neighbors === 3)) {
+                nextGrid[i][j] = true;
+            } 
+            // Rule 3: Overpopulation
+            else if (isAlive && neighbors > 3) {
+                nextGrid[i][j] = false;
+            } 
+            // Rule 4: Reproduction
+            else if (!isAlive && neighbors === 3) {
+                nextGrid[i][j] = true;
+            }
+        }
+    }
+
+    gridData = nextGrid;
+}
+
+function countNeighbors(x, y) {
+    let sum = 0;
+    for (let i = -1; i < 2; i++) {
+        for (let j = -1; j < 2; j++) {
+            // Wrap around edges (Toroidal grid) - Optional, but fun. 
+            // If you want hard walls, remove modulo logic and use checks like:
+            // const col = (x + i + GRID_SIZE) % GRID_SIZE; 
+            
+            const col = (x + i + GRID_SIZE) % GRID_SIZE;
+            const row = (y + j + GRID_SIZE) % GRID_SIZE;
+
+            sum += gridData[col][row] ? 1 : 0;
+        }
+    }
+    // Subtract self if it's alive
+    sum -= gridData[x][y] ? 1 : 0; 
+    return sum;
+}
+
+// --- VISUAL UPDATES ---
+
+function updateVisuals() {
+    let index = 0;
+    
+    for(let x=0; x<GRID_SIZE; x++) {
+        for(let y=0; y<GRID_SIZE; y++) {
+            const isAlive = gridData[x][y];
+
+            if (isAlive) {
+                // Position Calculation: 
+                // We subtracted offset in init, so we add it back here to center.
+                // Or simpler: just map 0..N to the offset logic used in setup.
+                
+                const offset = (GRID_SIZE - 1) * CELL_SPACING / 2;
+                const posX = x * CELL_SPACING - offset;
+                const posY = y * CELL_SPACING - offset;
+
+                dummy.position.set(posX, isAlive ? 0 : -5, posY); // If alive, height is 0 (center), else hide it down
+                dummy.updateMatrix();
+                
+                instancedMesh.setMatrixAt(index++, dummy.matrix);
+            } else {
+                // Dead state: Move far away or scale to zero. 
+                // Let's just move them slightly down so they are flat on floor
+                const offset = (GRID_SIZE - 1) * CELL_SPACING / 2;
+                const posX = x * CELL_SPACING - offset;
+                const posY = y * COLOR_SPACING - offset;
+
+                dummy.position.set(posX, -CELL_SPACING/4, posY); 
+                dummy.scale.set(0.9, 0.1, 0.9); // Flat disc look
+                
+                instancedMesh.setMatrixAt(index++, dummy.matrix);
+            }
+        }
+    }
+    
+    instancedMesh.instanceMatrix.needsUpdate = true;
+}
+
+// --- INTERACTION (RAYCASTING) ---
+
+function onMouseClick(event) {
+    // Calculate mouse position in normalized device coordinates (-1 to +1)
+    const mouse = new THREE.Vector2();
+    mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+    mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+
+    const raycaster = new THREE.Raycaster();
+    raycaster.setFromCamera(mouse, camera);
+
+    // We cast against the floor plane we added in init()
+    // Note: In this setup, the "Floor" is invisible. 
+    // But to get grid coordinates accurate, let's just raycast against the InstancedMesh itself?
+    // Actually, raycasting against a Mesh of 1200 boxes is slow and buggy with holes.
+    // Better approach: Raycast against an INVISIBLE plane that covers the whole grid area.
+    
+    const intersects = raycaster.intersectObject(scene.children.find(obj => obj.type === 'Mesh' && !obj.visible));
+
+    if (intersects.length > 0) {
+        const point = intersects[0].point;
+        
+        // Convert world position back to Grid Index
+        const offset = (GRID_SIZE - 1) * CELL_SPACING / 2;
+        
+        let gridX = Math.round((point.x + offset) / CELL_SPACING);
+        let gridY = Math.round((point.z + offset) / CELL_SPACING);
+
+        // Check bounds
+        if(gridX >= 0 && gridX < GRID_SIZE && gridY >= 0 && gridY < GRID_SIZE) {
+            gridData[gridX][gridY] = !gridData[gridX][gridY];
+            updateVisuals();
+        }
+    }
+}
+
+function onWindowResize() {
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+}
+
+// --- MAIN LOOP ---
+
+function animate() {
+    requestAnimationFrame(animate);
+    
+    if (isPlaying) {
+        computeNextGen();
+        updateVisuals();
+    }
+
+    controls.update();
+    renderer.render(scene, camera);
+}
+
+// Start everything
+init();
+
+</script>
+</body>
+</html>

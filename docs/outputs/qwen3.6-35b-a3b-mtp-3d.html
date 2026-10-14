@@ -1,0 +1,813 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Conway's Game of Life — 3D</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  background: #0a0a0f;
+  color: #e0e0e0;
+  font-family: 'Segoe UI', system-ui, sans-serif;
+  overflow: hidden;
+  height: 100vh;
+}
+
+#canvas-container {
+  width: 100%;
+  height: 100%;
+  position: absolute;
+  top: 0; left: 0;
+}
+
+/* ── Control Panel ── */
+#controls {
+  position: fixed;
+  top: 20px;
+  left: 20px;
+  background: rgba(10, 10, 20, 0.85);
+  backdrop-filter: blur(16px);
+  border: 1px solid rgba(100, 140, 255, 0.15);
+  border-radius: 16px;
+  padding: 24px;
+  width: 300px;
+  z-index: 100;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+}
+
+#controls h1 {
+  font-size: 18px;
+  font-weight: 700;
+  margin-bottom: 4px;
+  background: linear-gradient(135deg, #6ea8fe, #a78bfa);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+#controls .subtitle {
+  font-size: 11px;
+  color: #667;
+  margin-bottom: 20px;
+}
+
+.control-group {
+  margin-bottom: 16px;
+}
+
+.control-group label {
+  display: block;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: #889;
+  margin-bottom: 6px;
+}
+
+.btn-row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+button {
+  background: rgba(100, 140, 255, 0.1);
+  border: 1px solid rgba(100, 140, 255, 0.25);
+  color: #c0d0ff;
+  padding: 8px 16px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+  transition: all 0.2s;
+  flex: 1;
+  min-width: 70px;
+}
+
+button:hover {
+  background: rgba(100, 140, 255, 0.25);
+  border-color: rgba(100, 140, 255, 0.5);
+  color: #fff;
+}
+
+button.active {
+  background: rgba(100, 180, 255, 0.3);
+  border-color: #6ea8fe;
+  color: #fff;
+  box-shadow: 0 0 12px rgba(100, 140, 255, 0.3);
+}
+
+input[type="range"] {
+  width: 100%;
+  height: 6px;
+  -webkit-appearance: none;
+  appearance: none;
+  background: rgba(100, 140, 255, 0.15);
+  border-radius: 3px;
+  outline: none;
+}
+
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 16px; height: 16px;
+  background: #6ea8fe;
+  border-radius: 50%;
+  cursor: pointer;
+  box-shadow: 0 0 8px rgba(100, 140, 255, 0.5);
+}
+
+select {
+  width: 100%;
+  background: rgba(100, 140, 255, 0.1);
+  border: 1px solid rgba(100, 140, 255, 0.25);
+  color: #c0d0ff;
+  padding: 8px 12px;
+  border-radius: 8px;
+  font-size: 13px;
+  outline: none;
+  cursor: pointer;
+}
+
+select option { background: #1a1a2e; }
+
+.stats {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid rgba(100, 140, 255, 0.1);
+}
+
+.stat {
+  text-align: center;
+}
+
+.stat .value {
+  font-size: 20px;
+  font-weight: 700;
+  color: #6ea8fe;
+}
+
+.stat .label {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: #667;
+}
+
+/* ── Info Panel (bottom-right) ── */
+#info {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  background: rgba(10, 10, 20, 0.75);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(100, 140, 255, 0.1);
+  border-radius: 12px;
+  padding: 16px 20px;
+  font-size: 12px;
+  color: #889;
+  z-index: 100;
+}
+
+#info span { color: #6ea8fe; }
+
+/* ── Preset buttons ── */
+.preset-btns {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.preset-btns button {
+  font-size: 11px;
+  padding: 6px 8px;
+}
+</style>
+</head>
+<body>
+
+<div id="canvas-container"></div>
+
+<!-- Control Panel -->
+<div id="controls">
+  <h1>Game of Life — 3D</h1>
+  <p class="subtitle">Conway's cellular automaton in three dimensions</p>
+
+  <div class="control-group">
+    <label>Simulation</label>
+    <div class="btn-row">
+      <button id="btn-play" class="active">▶ Play</button>
+      <button id="btn-step">⏭ Step</button>
+      <button id="btn-pause">⏸ Pause</button>
+    </div>
+  </div>
+
+  <div class="control-group">
+    <label>Speed: <span id="speed-val">10</span> gen/s</label>
+    <input type="range" id="speed" min="1" max="60" value="10">
+  </div>
+
+  <div class="control-group">
+    <label>Grid Size: <span id="size-val">40</span></label>
+    <select id="grid-size">
+      <option value="20">Small (20×20)</option>
+      <option value="30">Medium (30×30)</option>
+      <option value="40" selected>Large (40×40)</option>
+      <option value="50">XL (50×50)</option>
+    </select>
+  </div>
+
+  <div class="control-group">
+    <label>Cell Height: <span id="height-val">1.0</span></label>
+    <input type="range" id="cell-height" min="0.2" max="3" step="0.1" value="1.0">
+  </div>
+
+  <div class="control-group">
+    <label>Visual Style</label>
+    <select id="visual-style">
+      <option value="neon">Neon Glow</option>
+      <option value="crystal">Crystal</option>
+      <option value="fire">Fire</option>
+      <option value="matrix">Matrix</option>
+      <option value="ocean">Ocean</option>
+    </select>
+  </div>
+
+  <div class="control-group">
+    <label>Presets</label>
+    <div class="preset-btns">
+      <button onclick="loadPreset('glider')">Glider Gun</button>
+      <button onclick="loadPreset('pulsar')">Pulsar</button>
+      <button onclick="loadPreset('lwss')">Spaceship</button>
+      <button onclick="loadPreset('random')">Random</button>
+    </div>
+  </div>
+
+  <div class="control-group">
+    <label>Actions</label>
+    <div class="btn-row">
+      <button id="btn-clear" style="flex:1;">🗑 Clear</button>
+      <button id="btn-randomize" style="flex:1;">🎲 Random</button>
+    </div>
+  </div>
+
+  <div class="stats">
+    <div class="stat">
+      <div class="value" id="stat-gen">0</div>
+      <div class="label">Generation</div>
+    </div>
+    <div class="stat">
+      <div class="value" id="stat-pop">0</div>
+      <div class="label">Population</div>
+    </div>
+  </div>
+</div>
+
+<!-- Info -->
+<div id="info">
+  🖱 Left-drag: Rotate &nbsp;|&nbsp; Scroll: Zoom &nbsp;|&nbsp; Right-drag: Pan<br>
+  Click cells to toggle them
+</div>
+
+<!-- Three.js -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+
+<script>
+// ═══════════════════════════════════════════
+//  CONFIGURATION
+// ═══════════════════════════════════════════
+let GRID_SIZE = 40;
+const CELL_SPACING = 1.05;
+const HALF_GRID = () => Math.floor(GRID_SIZE / 2);
+
+// Visual palettes: [alive color, dead color, glow color]
+const PALETTES = {
+  neon:    { alive: 0x4488ff, dead: 0x111122, glow: 0x6ea8fe, emissive: 0x2244aa },
+  crystal: { alive: 0xaaddff, dead: 0x1a1a2e, glow: 0xffffff, emissive: 0x5588cc },
+  fire:    { alive: 0xff6633, dead: 0x1a0a00, glow: 0xffaa44, emissive: 0xcc3300 },
+  matrix:  { alive: 0x00ff44, dead: 0x001a00, glow: 0x88ff88, emissive: 0x006622 },
+  ocean:   { alive: 0x00ccdd, dead: 0x001122, glow: 0x44eeff, emissive: 0x007799 }
+};
+
+let currentPalette = 'neon';
+let cellHeightMax = 1.0;
+let isPlaying = true;
+let generation = 0;
+let population = 0;
+let lastStepTime = 0;
+let speed = 10; // generations per second
+
+// ═══════════════════════════════════════════
+//  THREE.JS SETUP
+// ═══════════════════════════════════════════
+const container = document.getElementById('canvas-container');
+const scene = new THREE.Scene();
+scene.fog = new THREE.FogExp2(0x0a0a0f, 0.012);
+
+const camera = new THREE.PerspectiveCamera(55, window.innerWidth / window.innerHeight, 0.1, 500);
+camera.position.set(GRID_SIZE * 0.8, GRID_SIZE * 1.2, GRID_SIZE * 0.8);
+
+const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.2;
+container.appendChild(renderer.domElement);
+
+const controls = new THREE.OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+controls.dampingFactor = 0.08;
+controls.target.set(HALF_GRID(), 0, HALF_GRID());
+controls.maxDistance = 200;
+controls.minDistance = 10;
+
+// ═══════════════════════════════════════════
+//  LIGHTING
+// ═══════════════════════════════════════════
+const ambientLight = new THREE.AmbientLight(0x334466, 0.5);
+scene.add(ambientLight);
+
+const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+dirLight.position.set(30, 50, 30);
+dirLight.castShadow = true;
+dirLight.shadow.mapSize.set(2048, 2048);
+dirLight.shadow.camera.left = -60;
+dirLight.shadow.camera.right = 60;
+dirLight.shadow.camera.top = 60;
+dirLight.shadow.camera.bottom = -60;
+scene.add(dirLight);
+
+const pointLight1 = new THREE.PointLight(0x4488ff, 1.5, 100);
+pointLight1.position.set(-20, 30, -20);
+scene.add(pointLight1);
+
+const pointLight2 = new THREE.PointLight(0xff6644, 0.8, 100);
+pointLight2.position.set(20, 20, 20);
+scene.add(pointLight2);
+
+// ═══════════════════════════════════════════
+//  GRID & CELLS
+// ═══════════════════════════════════════════
+const grid = [];
+let cellsMesh;
+let cellData = []; // { alive, age }
+let geometry, material;
+
+function initGrid() {
+  // Remove old meshes
+  if (cellsMesh) scene.remove(cellsMesh);
+
+  const half = HALF_GRID();
+  GRID_SIZE = parseInt(document.getElementById('grid-size').value);
+  document.getElementById('size-val').textContent = GRID_SIZE;
+
+  grid.length = 0;
+  cellData = [];
+
+  for (let x = 0; x < GRID_SIZE; x++) {
+    grid[x] = [];
+    for (let z = 0; z < GRID_SIZE; z++) {
+      grid[x][z] = false;
+      cellData.push({ alive: false, age: 0 });
+    }
+  }
+
+  // Create instanced mesh
+  geometry = new THREE.BoxGeometry(0.85, 1, 0.85);
+  const matParams = {
+    metalness: 0.3,
+    roughness: 0.4,
+    transparent: true,
+    opacity: 0.92
+  };
+
+  material = new THREE.MeshStandardMaterial(matParams);
+  cellsMesh = new THREE.InstancedMesh(geometry, material, GRID_SIZE * GRID_SIZE);
+  cellsMesh.castShadow = true;
+  cellsMesh.receiveShadow = true;
+
+  const dummy = new THREE.Object3D();
+  for (let x = 0; x < GRID_SIZE; x++) {
+    for (let z = 0; z < GRID_SIZE; z++) {
+      dummy.position.set(
+        x * CELL_SPACING - half,
+        0,
+        z * CELL_SPACING - half
+      );
+      dummy.scale.set(1, 0.01, 1);
+      dummy.updateMatrix();
+      cellsMesh.setMatrixAt(x * GRID_SIZE + z, dummy.matrix);
+    }
+  }
+
+  scene.add(cellsMesh);
+  generation = 0;
+  updateStats();
+}
+
+// ═══════════════════════════════════════════
+//  FLOOR / GRID LINES
+// ═══════════════════════════════════════════
+function createFloor() {
+  const half = HALF_GRID() * CELL_SPACING;
+
+  // Floor plane
+  const floorGeo = new THREE.PlaneGeometry(200, 200);
+  const floorMat = new THREE.MeshStandardMaterial({
+    color: 0x0a0a15,
+    metalness: 0.8,
+    roughness: 0.3
+  });
+  const floor = new THREE.Mesh(floorGeo, floorMat);
+  floor.rotation.x = -Math.PI / 2;
+  floor.position.y = -0.05;
+  floor.receiveShadow = true;
+  scene.add(floor);
+
+  // Grid helper
+  const gridHelper = new THREE.GridHelper(
+    GRID_SIZE * CELL_SPACING,
+    GRID_SIZE,
+    0x1a2a44,
+    0x0d1525
+  );
+  gridHelper.position.set(HALF_GRID() * CELL_SPACING - CELL_SPACING / 2, 0.01, HALF_GRID() * CELL_SPACING - CELL_SPACING / 2);
+  scene.add(gridHelper);
+
+  // Border glow
+  const borderGeo = new THREE.EdgesGeometry(
+    new THREE.BoxGeometry(GRID_SIZE * CELL_SPACING, 0.05, GRID_SIZE * CELL_SPACING)
+  );
+  const borderMat = new THREE.LineBasicMaterial({ color: 0x2244aa, transparent: true, opacity: 0.3 });
+  const border = new THREE.LineSegments(borderGeo, borderMat);
+  border.position.set(HALF_GRID() * CELL_SPACING - CELL_SPACING / 2, 0.02, HALF_GRID() * CELL_SPACING - CELL_SPACING / 2);
+  scene.add(border);
+}
+
+// ═══════════════════════════════════════════
+//  GAME OF LIFE LOGIC
+// ═══════════════════════════════════════════
+function countNeighbors(x, z) {
+  let count = 0;
+  for (let dx = -1; dx <= 1; dx++) {
+    for (let dz = -1; dz <= 1; dz++) {
+      if (dx === 0 && dz === 0) continue;
+      const nx = x + dx, nz = z + dz;
+      if (nx >= 0 && nx < GRID_SIZE && nz >= 0 && nz < GRID_SIZE) {
+        if (grid[nx][nz]) count++;
+      }
+    }
+  }
+  return count;
+}
+
+function step() {
+  const newGrid = [];
+  let popCount = 0;
+
+  for (let x = 0; x < GRID_SIZE; x++) {
+    newGrid[x] = [];
+    for (let z = 0; z < GRID_SIZE; z++) {
+      const idx = x * GRID_SIZE + z;
+      const neighbors = countNeighbors(x, z);
+      const alive = grid[x][z];
+
+      if (alive) {
+        newGrid[x][z] = (neighbors === 2 || neighbors === 3);
+        if (newGrid[x][z]) cellData[idx].age++;
+        else cellData[idx].age = 0;
+      } else {
+        newGrid[x][z] = (neighbors === 3);
+        if (newGrid[x][z]) cellData[idx].age = 1;
+      }
+
+      if (newGrid[x][z]) popCount++;
+    }
+  }
+
+  for (let x = 0; x < GRID_SIZE; x++) {
+    for (let z = 0; z < GRID_SIZE; z++) {
+      grid[x][z] = newGrid[x][z];
+    }
+  }
+
+  generation++;
+  population = popCount;
+}
+
+// ═══════════════════════════════════════════
+//  VISUAL UPDATE
+// ═══════════════════════════════════════════
+const dummy = new THREE.Object3D();
+const color = new THREE.Color();
+
+function updateVisuals() {
+  const palette = PALETTES[currentPalette];
+  const half = HALF_GRID();
+  let popCount = 0;
+
+  for (let x = 0; x < GRID_SIZE; x++) {
+    for (let z = 0; z < GRID_SIZE; z++) {
+      const idx = x * GRID_SIZE + z;
+      const alive = grid[x][z];
+      if (alive) popCount++;
+
+      const age = cellData[idx].age;
+      const t = Math.min(age / 30, 1); // normalize age for color
+
+      // Color interpolation based on palette and age
+      if (alive) {
+        const r = palette.alive >> 16 & 0xff;
+        const g = palette.alive >> 8 & 0xff;
+        const b = palette.alive & 0xff;
+        color.setRGB(
+          Math.min(255, r + (255 - r) * t * 0.3),
+          Math.min(255, g + (255 - g) * t * 0.3),
+          Math.min(255, b + (255 - b) * t * 0.1)
+        );
+      } else {
+        const r = palette.dead >> 16 & 0xff;
+        const g = palette.dead >> 8 & 0xff;
+        const b = palette.dead & 0xff;
+        color.setRGB(r / 255, g / 255, b / 255);
+      }
+
+      cellsMesh.setColorAt(idx, color);
+
+      // Scale: alive cells rise up
+      const targetHeight = alive ? cellHeightMax : 0.01;
+      dummy.position.set(
+        x * CELL_SPACING - half,
+        targetHeight / 2,
+        z * CELL_SPACING - half
+      );
+      dummy.scale.set(1, targetHeight, 1);
+      dummy.updateMatrix();
+      cellsMesh.setMatrixAt(idx, dummy.matrix);
+    }
+  }
+
+  cellsMesh.instanceColor.needsUpdate = true;
+  cellsMesh.instanceMatrix.needsUpdate = true;
+  population = popCount;
+}
+
+// ═══════════════════════════════════════════
+//  RAYCASTING (click to toggle)
+// ═══════════════════════════════════════════
+const raycaster = new THREE.Raycaster();
+const mouse = new THREE.Vector2();
+
+renderer.domElement.addEventListener('pointerdown', (e) => {
+  // Only handle left click, not drag
+  mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
+  mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
+
+  raycaster.setFromCamera(mouse, camera);
+  const intersects = raycaster.intersectObject(cellsMesh);
+
+  if (intersects.length > 0) {
+    const instanceId = intersects[0].instanceId;
+    const x = Math.floor(instanceId / GRID_SIZE);
+    const z = instanceId % GRID_SIZE;
+    grid[x][z] = !grid[x][z];
+    cellData[instanceId].alive = grid[x][z];
+    if (grid[x][z]) cellData[instanceId].age = 1;
+    else cellData[instanceId].age = 0;
+    updateVisuals();
+  }
+});
+
+// ═══════════════════════════════════════════
+//  PRESETS
+// ═══════════════════════════════════════════
+function clearGrid() {
+  for (let x = 0; x < GRID_SIZE; x++)
+    for (let z = 0; z < GRID_SIZE; z++) {
+      grid[x][z] = false;
+      cellData[x * GRID_SIZE + z].alive = false;
+      cellData[x * GRID_SIZE + z].age = 0;
+    }
+  generation = 0;
+  updateVisuals();
+}
+
+function randomizeGrid(density = 0.3) {
+  for (let x = 0; x < GRID_SIZE; x++) {
+    for (let z = 0; z < GRID_SIZE; z++) {
+      const alive = Math.random() < density;
+      grid[x][z] = alive;
+      cellData[x * GRID_SIZE + z].alive = alive;
+      cellData[x * GRID_SIZE + z].age = alive ? 1 : 0;
+    }
+  }
+  generation = 0;
+  updateVisuals();
+}
+
+function loadPreset(type) {
+  clearGrid();
+  const half = HALF_GRID();
+
+  if (type === 'random') {
+    randomizeGrid(0.3);
+    return;
+  }
+
+  // Glider Gun (R-pentomino style small patterns for compactness)
+  if (type === 'glider') {
+    const gun = [
+      [1,24],[1,22],[2,22],[1,23],[2,23],[0,34],[0,35],[1,34],[1,35],
+      [0,36],[1,36],[3,24],[3,22],[4,22],[5,22],[3,23],[5,23],[2,24],
+      [1,24],[2,22],[3,22],[4,22],[2,23],[1,24],[0,34],[0,35],[1,34],
+      [1,35],[0,36],[1,36],[3,24],[3,22],[4,22],[5,22],[3,23],[5,23]
+    ];
+    // Simpler: just place gliders and a few patterns
+    const patterns = [
+      [[0,0],[1,0],[2,0],[2,1],[1,2]], // glider
+      [[0,0],[1,0],[0,1],[1,1]],       // block
+      [[0,0],[1,0],[1,1],[2,1]],       // blinker vertical
+    ];
+    for (let p = 0; p < patterns.length; p++) {
+      const ox = half - 5 + p * 8;
+      const oz = half - 5;
+      patterns[p].forEach(([dx, dz]) => {
+        if (ox+dx >= 0 && ox+dx < GRID_SIZE && oz+dz >= 0 && oz+dz < GRID_SIZE) {
+          grid[ox+dx][oz+dz] = true;
+          cellData[(ox+dx)*GRID_SIZE+(oz+dz)].alive = true;
+          cellData[(ox+dx)*GRID_SIZE+(oz+dz)].age = 1;
+        }
+      });
+    }
+  }
+
+  if (type === 'pulsar') {
+    const offsets = [
+      [-6,-4],[-6,-3],[-6,-2],[6,-4],[6,-3],[6,-2],
+      [-4,-6],[-3,-6],[-2,-6],[-4,6],[-3,6],[-2,6],
+      [-4,-1],[-3,-1],[-2,-1],[-4,1],[-3,1],[-2,1],
+      [1,-4],[1,-3],[1,-2],[1,4],[1,3],[1,2],
+      [-1,-4],[-1,-3],[-1,-2],[-1,4],[-1,3],[-1,2],
+    ];
+    offsets.forEach(([dx, dz]) => {
+      const nx = half + dx, nz = half + dz;
+      if (nx >= 0 && nx < GRID_SIZE && nz >= 0 && nz < GRID_SIZE) {
+        grid[nx][nz] = true;
+        cellData[nx*GRID_SIZE+nz].alive = true;
+        cellData[nx*GRID_SIZE+nz].age = 1;
+      }
+    });
+  }
+
+  if (type === 'lwss') {
+    const ship = [
+      [0,1],[0,4],[1,0],[2,0],[3,0],[4,0],
+      [0,-1],[1,-1],[2,-1],[3,-1]
+    ];
+    // Simpler LWSS
+    const lwss = [[0,1],[0,4],[1,0],[2,0],[3,0],[4,0]];
+    lwss.forEach(([dx, dz]) => {
+      const nx = half + dx - 2, nz = half + dz;
+      if (nx >= 0 && nx < GRID_SIZE && nz >= 0 && nz < GRID_SIZE) {
+        grid[nx][nz] = true;
+        cellData[nx*GRID_SIZE+nz].alive = true;
+        cellData[nx*GRID_SIZE+nz].age = 1;
+      }
+    });
+  }
+
+  updateVisuals();
+}
+
+// ═══════════════════════════════════════════
+//  UI BINDINGS
+// ═══════════════════════════════════════════
+document.getElementById('btn-play').addEventListener('click', () => {
+  isPlaying = true;
+  document.getElementById('btn-play').classList.add('active');
+  document.getElementById('btn-pause').classList.remove('active');
+});
+
+document.getElementById('btn-pause').addEventListener('click', () => {
+  isPlaying = false;
+  document.getElementById('btn-pause').classList.add('active');
+  document.getElementById('btn-play').classList.remove('active');
+});
+
+document.getElementById('btn-step').addEventListener('click', () => {
+  step();
+  updateVisuals();
+  updateStats();
+});
+
+document.getElementById('btn-clear').addEventListener('click', clearGrid);
+document.getElementById('btn-randomize').addEventListener('click', () => randomizeGrid(0.3));
+
+document.getElementById('speed').addEventListener('input', (e) => {
+  speed = parseInt(e.target.value);
+  document.getElementById('speed-val').textContent = speed;
+});
+
+document.getElementById('cell-height').addEventListener('input', (e) => {
+  cellHeightMax = parseFloat(e.target.value);
+  document.getElementById('height-val').textContent = cellHeightMax.toFixed(1);
+});
+
+document.getElementById('grid-size').addEventListener('change', () => {
+  initGrid();
+  createFloor();
+  updateVisuals();
+});
+
+document.getElementById('visual-style').addEventListener('change', (e) => {
+  currentPalette = e.target.value;
+  material.color.setHex(PALETTES[currentPalette].alive);
+  updateVisuals();
+});
+
+function updateStats() {
+  document.getElementById('stat-gen').textContent = generation;
+  document.getElementById('stat-pop').textContent = population.toLocaleString();
+}
+
+// ═══════════════════════════════════════════
+//  PARTICLES (ambient floating particles)
+// ═══════════════════════════════════════════
+const particleCount = 500;
+const particleGeo = new THREE.BufferGeometry();
+const particlePositions = new Float32Array(particleCount * 3);
+for (let i = 0; i < particleCount; i++) {
+  particlePositions[i*3]   = (Math.random() - 0.5) * GRID_SIZE * CELL_SPACING * 1.5;
+  particlePositions[i*3+1] = Math.random() * 40 + 2;
+  particlePositions[i*3+2] = (Math.random() - 0.5) * GRID_SIZE * CELL_SPACING * 1.5;
+}
+particleGeo.setAttribute('position', new THREE.BufferAttribute(particlePositions, 3));
+
+const particleMat = new THREE.PointsMaterial({
+  color: PALETTES.neon.glow,
+  size: 0.15,
+  transparent: true,
+  opacity: 0.4,
+  blending: THREE.AdditiveBlending,
+  depthWrite: false
+});
+const particles = new THREE.Points(particleGeo, particleMat);
+scene.add(particles);
+
+// ═══════════════════════════════════════════
+//  ANIMATION LOOP
+// ═══════════════════════════════════════════
+function animate(time) {
+  requestAnimationFrame(animate);
+
+  // Game step timing
+  if (isPlaying && time - lastStepTime > 1000 / speed) {
+    step();
+    updateVisuals();
+    updateStats();
+    lastStepTime = time;
+  }
+
+  // Animate particles
+  const positions = particles.geometry.attributes.position.array;
+  for (let i = 0; i < particleCount; i++) {
+    positions[i*3+1] += Math.sin(time * 0.001 + i) * 0.002;
+    if (positions[i*3+1] > 45) positions[i*3+1] = 2;
+  }
+  particles.geometry.attributes.position.needsUpdate = true;
+
+  // Update particle color based on palette
+  particleMat.color.setHex(PALETTES[currentPalette].glow);
+
+  controls.update();
+  renderer.render(scene, camera);
+}
+
+// ═══════════════════════════════════════════
+//  RESIZE
+// ═══════════════════════════════════════════
+window.addEventListener('resize', () => {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+});
+
+// ═══════════════════════════════════════════
+//  INIT
+// ═══════════════════════════════════════════
+initGrid();
+createFloor();
+randomizeGrid(0.25); // Start with some random cells
+updateVisuals();
+animate(0);
+
+</script>
+</body>
+</html>

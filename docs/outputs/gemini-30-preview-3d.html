@@ -1,0 +1,618 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Neon Life 3D | Ultimate</title>
+    <style>
+        :root {
+            --primary: #00ff9d;
+            --secondary: #ff0055;
+            --bg: #080808;
+            --panel-bg: rgba(15, 15, 20, 0.95);
+            --text: #eee;
+            --font: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+        }
+
+        body { margin: 0; overflow: hidden; background-color: var(--bg); color: var(--text); font-family: var(--font); }
+
+        #canvas-container {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 0;
+            background: radial-gradient(circle at center, #181818 0%, #000000 100%);
+        }
+
+        /* UI Panel */
+        .ui-panel {
+            position: absolute; top: 20px; left: 20px; width: 340px;
+            background: var(--panel-bg);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 6px; padding: 15px; z-index: 100;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.9);
+            max-height: 90vh; overflow-y: auto;
+            transition: height 0.3s ease;
+        }
+        .ui-panel.collapsed { height: 45px; padding-bottom: 0; overflow:hidden;}
+
+        .panel-header {
+            display: flex; justify-content: space-between; align-items: center;
+            border-bottom: 1px solid #333; padding-bottom: 10px; margin-bottom: 15px; cursor: move;
+        }
+        .panel-header h1 {
+            margin: 0; font-size: 18px; font-weight: 700; letter-spacing: 2px;
+            color: var(--primary); text-transform: uppercase;
+        }
+        .minimize-btn { background: none; border: none; color: #fff; font-size: 20px; cursor: pointer; }
+
+        /* Controls */
+        .control-group { margin-bottom: 15px; }
+        .control-group label { display: block; font-size: 10px; color: #888; margin-bottom: 5px; font-weight: bold; text-transform: uppercase;}
+
+        .btn-row { display: flex; gap: 10px; margin-bottom: 10px; }
+        button {
+            flex: 1; padding: 10px; border: 1px solid #333; background: #222;
+            color: #ccc; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 11px; transition: 0.2s;
+        }
+        button:hover { background: var(--primary); color: #000; border-color: var(--primary); }
+        button.active { background: var(--primary); color: #000; box-shadow: 0 0 10px var(--primary); }
+        button.audio-on { background: var(--secondary); color: #fff; border-color: var(--secondary); }
+
+        input[type="range"], select { width: 100%; background: #000; border: 1px solid #333; color: #fff; padding: 6px; border-radius: 3px; }
+        input[type="range"] { height: 4px; -webkit-appearance: none; padding:0; border:none; margin-top:8px; background: #333;}
+        input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; width: 14px; height: 14px; border-radius: 50%; background: var(--primary); cursor: pointer; }
+
+        /* Graphs */
+        .graph-wrapper { background: #000; border: 1px solid #333; padding: 5px; margin-bottom: 5px; border-radius: 3px;}
+        canvas { display: block; width: 100%; }
+        .stats-row { display: flex; justify-content: space-between; font-size: 11px; font-family: monospace; color: #aaa;}
+
+        /* Scrollbar */
+        ::-webkit-scrollbar { width: 5px; }
+        ::-webkit-scrollbar-thumb { background: #333; border-radius: 3px; }
+        
+        #loading { position: fixed; top:0; left:0; width:100%; height:100%; background:#000; z-index:200; display:flex; justify-content:center; align-items:center; font-family:monospace; color:var(--primary); }
+        .hidden { display: none !important; }
+    </style>
+    
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+                "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+            }
+        }
+    </script>
+</head>
+<body>
+
+    <div id="loading">GENERATING ENVIRONMENT...</div>
+    <div id="canvas-container"></div>
+
+    <div class="ui-panel" id="dragPanel">
+        <div class="panel-header" id="dragHandle">
+            <h1>Neon Life <span style="font-size:10px; color:#fff;">ULTIMATE</span></h1>
+            <button class="minimize-btn" id="collapseBtn">−</button>
+        </div>
+
+        <div class="btn-row">
+            <button id="playBtn">START</button>
+            <button id="stepBtn">STEP</button>
+        </div>
+        <div class="btn-row">
+            <button id="randomBtn">SYMMETRY</button>
+            <button id="clearBtn">CLEAR</button>
+        </div>
+        <div class="btn-row">
+            <button id="audioBtn">ENABLE AUDIO 🔇</button>
+        </div>
+
+        <hr style="border:0; border-top:1px solid #333; margin:15px 0">
+
+        <div class="control-group">
+            <label>Morph Speed</label>
+            <input type="range" id="speedRange" min="1" max="100" value="30">
+        </div>
+
+        <div class="control-group">
+            <label>Rule Set</label>
+            <select id="ruleSelect">
+                <option value="builder">The Architect (4526) - Structures</option>
+                <option value="carter">Carter Bays (5766) - Gliders</option>
+                <option value="conway">Conway 3D (4555) - Standard</option>
+                <option value="pyro">Pyro (4455) - Explosive</option>
+            </select>
+        </div>
+
+        <!-- Charts -->
+        <div class="control-group">
+            <label>Live Activity (Last 50 Gens)</label>
+            <div class="graph-wrapper">
+                <canvas id="shortGraph" height="40"></canvas>
+            </div>
+            <div class="stats-row">
+                <span>POP: <span id="popVal" style="color:#fff">0</span></span>
+                <span>GEN: <span id="genVal" style="color:var(--primary)">0</span></span>
+            </div>
+        </div>
+
+        <div class="control-group">
+            <label>Long Term History (All Time)</label>
+            <div class="graph-wrapper">
+                <canvas id="longGraph" height="40"></canvas>
+            </div>
+        </div>
+
+        <div class="control-group">
+            <label>Grid Size</label>
+            <select id="sizeSelect">
+                <option value="20">20x20x20 (Fastest)</option>
+                <option value="30">30x30x30 (Balanced)</option>
+                <option value="40" selected>40x40x40 (High Detail)</option>
+            </select>
+        </div>
+        
+        <div style="font-size:10px; color:#555; text-align:center; margin-top:10px;">
+            Right Click: Pan | Left Click: Rotate | Scroll: Zoom
+        </div>
+    </div>
+
+    <script type="module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+        import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+
+        /** --- CONFIGURATION --- */
+        let gridSize = 40;
+        let totalCells = gridSize ** 3;
+        let morphSpeed = 1.5;
+        
+        // Arrays
+        let gridPrev, gridNext, gridState, ageGrid;
+        
+        // Engine
+        let isRunning = false;
+        let generation = 0;
+        let morphProgress = 1.0;
+        const clock = new THREE.Clock();
+
+        // Three.js
+        let scene, camera, renderer, controls, mesh;
+        const dummy = new THREE.Object3D();
+        const color = new THREE.Color();
+
+        // Audio
+        let audioCtx, masterGain;
+        let isAudioEnabled = false;
+        let lastAudioTime = 0;
+        
+        // Charts
+        const shortCtx = document.getElementById('shortGraph').getContext('2d');
+        const longCtx = document.getElementById('longGraph').getContext('2d');
+        let popHistory = [];
+        let longHistory = [];
+
+        const RULES = {
+            builder: { b:[4], s:[5,6] },
+            carter: { b:[6], s:[5,6,7] },
+            conway: { b:[4,5], s:[5] },
+            pyro: { b:[4], s:[4,5] }
+        };
+        let currentRule = RULES.builder;
+
+        /** --- INITIALIZATION --- */
+        function init() {
+            resizeArrays();
+
+            const container = document.getElementById('canvas-container');
+            scene = new THREE.Scene();
+            
+            // Camera
+            camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.1, 500);
+            camera.position.set(gridSize * 1.8, gridSize * 1.6, gridSize * 1.8);
+
+            // Renderer
+            renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            // Tone mapping for realistic lighting falloff
+            renderer.toneMapping = THREE.ACESFilmicToneMapping;
+            renderer.toneMappingExposure = 1.1;
+            container.appendChild(renderer.domElement);
+
+            // ENVIRONMENT (Reflections)
+            const pmremGenerator = new THREE.PMREMGenerator(renderer);
+            scene.environment = pmremGenerator.fromScene(new RoomEnvironment()).texture;
+
+            // Controls
+            controls = new OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true;
+            controls.autoRotate = true;
+            controls.autoRotateSpeed = 0.5;
+            controls.target.set(gridSize/2, gridSize/2, gridSize/2);
+
+            // Lighting
+            const spotLight = new THREE.SpotLight(0xffffff, 400);
+            spotLight.position.set(gridSize/2, gridSize*2, gridSize/2);
+            spotLight.angle = Math.PI / 6;
+            spotLight.penumbra = 0.5;
+            scene.add(spotLight);
+            
+            const fillLight = new THREE.PointLight(0x00ff9d, 1, gridSize * 3);
+            fillLight.position.set(-gridSize, 0, -gridSize);
+            scene.add(fillLight);
+
+            createCage();
+            createMesh();
+            randomizeSymmetrical();
+            
+            document.getElementById('loading').classList.add('hidden');
+            animate();
+        }
+
+        function resizeArrays() {
+            totalCells = gridSize ** 3;
+            gridPrev = new Uint8Array(totalCells);
+            gridNext = new Uint8Array(totalCells);
+            gridState = new Uint8Array(totalCells);
+            ageGrid = new Uint16Array(totalCells);
+        }
+
+        function createCage() {
+            const geo = new THREE.BoxGeometry(gridSize, gridSize, gridSize);
+            const edges = new THREE.EdgesGeometry(geo);
+            const mat = new THREE.LineBasicMaterial({ color: 0x333333, transparent: true, opacity: 0.3 });
+            const cage = new THREE.LineSegments(edges, mat);
+            cage.position.set((gridSize-1)/2, (gridSize-1)/2, (gridSize-1)/2);
+            cage.name = "cage";
+            scene.add(cage);
+        }
+
+        function createMesh() {
+            if(mesh) { scene.remove(mesh); mesh.dispose(); }
+
+            // Cube Geometry
+            const geometry = new THREE.BoxGeometry(0.85, 0.85, 0.85); 
+            
+            // Reflective Material
+            const material = new THREE.MeshPhysicalMaterial({
+                color: 0xffffff,
+                metalness: 0.2,
+                roughness: 0.15, // Glossy
+                clearcoat: 1.0,
+                clearcoatRoughness: 0.1,
+                transmission: 0.0,
+                reflectivity: 0.8
+            });
+
+            mesh = new THREE.InstancedMesh(geometry, material, totalCells);
+            mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+            scene.add(mesh);
+        }
+
+        /** --- LOGIC --- */
+        function computeNextGen() {
+            gridPrev.set(gridState);
+            
+            let pop = 0;
+            let activity = 0;
+            let nextGridCalc = new Uint8Array(totalCells);
+
+            for (let i = 0; i < totalCells; i++) {
+                const x = i % gridSize;
+                const y = Math.floor((i / gridSize) % gridSize);
+                const z = Math.floor(i / (gridSize * gridSize));
+                
+                let neighbors = 0;
+                for (let dz = -1; dz <= 1; dz++) {
+                    for (let dy = -1; dy <= 1; dy++) {
+                        for (let dx = -1; dx <= 1; dx++) {
+                            if (dx === 0 && dy === 0 && dz === 0) continue;
+                            const nx = (x + dx + gridSize) % gridSize;
+                            const ny = (y + dy + gridSize) % gridSize;
+                            const nz = (z + dz + gridSize) % gridSize;
+                            if (gridState[nx + ny * gridSize + nz * gridSize * gridSize] > 0) neighbors++;
+                        }
+                    }
+                }
+
+                const state = gridState[i];
+                let nextState = 0;
+
+                if (state === 1) {
+                     if (currentRule.s.includes(neighbors)) nextState = 1;
+                } else {
+                     if (currentRule.b.includes(neighbors)) nextState = 1;
+                }
+                
+                nextGridCalc[i] = nextState;
+
+                // Aging Logic
+                if (nextState === 1) {
+                    pop++;
+                    if (state === 0) activity++; // Birth
+                    if (ageGrid[i] < 1000) ageGrid[i]++;
+                } else {
+                    if (state === 1) activity++; // Death
+                    ageGrid[i] = 0;
+                }
+            }
+
+            gridNext.set(nextGridCalc);
+            gridState.set(nextGridCalc);
+            generation++;
+            morphProgress = 0.0;
+
+            updateCharts(pop);
+            document.getElementById('genVal').innerText = generation;
+            document.getElementById('popVal').innerText = pop;
+            
+            if(isAudioEnabled) playAudio(pop, activity);
+        }
+
+        /** --- RENDER LOOP --- */
+        function animate() {
+            requestAnimationFrame(animate);
+            const dt = clock.getDelta();
+            controls.update();
+
+            if (isRunning) {
+                morphProgress += dt * morphSpeed;
+                if (morphProgress >= 1.0) {
+                    morphProgress = 1.0;
+                    computeNextGen();
+                }
+            } else {
+                morphProgress = 1.0;
+            }
+
+            renderInstances();
+            renderer.render(scene, camera);
+        }
+
+        function renderInstances() {
+            let count = 0;
+            // Easing
+            const t = morphProgress;
+            const scaleIn = t * (2 - t); 
+            const scaleOut = 1 - t; 
+
+            for (let i = 0; i < totalCells; i++) {
+                const wasAlive = gridPrev[i];
+                const isAlive = (isRunning || morphProgress < 1.0) ? gridNext[i] : gridState[i];
+                
+                if (wasAlive === 0 && isAlive === 0) continue;
+
+                const x = i % gridSize;
+                const y = Math.floor((i / gridSize) % gridSize);
+                const z = Math.floor(i / (gridSize * gridSize));
+
+                dummy.position.set(x, y, z);
+
+                let scale = 1.0;
+                const age = ageGrid[i];
+
+                // --- COLORING LOGIC (Heatmap) ---
+                // We want color to shift on every single generation for young cells
+                // Age 0: Flash White
+                // Age 1-20: Pink -> Purple -> Blue
+                // Age 20+: Cyan/Green (Cooling down)
+                
+                let h, s, l;
+                
+                if (age < 1) {
+                    // Birth Flash
+                    h=0; s=0; l=1.0; 
+                } else {
+                    // Spectrum Shift
+                    // Start at 0.9 (Pink/Red) and move backwards towards 0.5 (Cyan)
+                    // The shift happens rapidly over first 40 generations
+                    const maxAge = 40;
+                    const life = Math.min(age, maxAge) / maxAge; // 0.0 to 1.0
+                    
+                    // Map 0.9 -> 0.45
+                    h = 0.9 - (life * 0.45); 
+                    s = 1.0; 
+                    l = 0.5;
+                }
+
+                if (wasAlive === 0 && isAlive === 1) {
+                    scale = scaleIn;
+                    l = 0.9; // Extra bright on spawn
+                } else if (wasAlive === 1 && isAlive === 0) {
+                    scale = scaleOut;
+                    l = 0.3; // Dark on death
+                }
+
+                if (scale > 0.01) {
+                    dummy.scale.set(scale, scale, scale);
+                    dummy.updateMatrix();
+                    color.setHSL(h, s, l);
+                    mesh.setMatrixAt(count, dummy.matrix);
+                    mesh.setColorAt(count, color);
+                    count++;
+                }
+            }
+
+            mesh.count = count;
+            mesh.instanceMatrix.needsUpdate = true;
+            mesh.instanceColor.needsUpdate = true;
+        }
+
+        /** --- GRAPHING --- */
+        function updateCharts(pop) {
+            // Short Term
+            popHistory.push(pop);
+            if(popHistory.length > 50) popHistory.shift();
+            drawGraph(shortCtx, popHistory, '#00ff9d');
+
+            // Long Term (Every 5 generations)
+            if (generation % 5 === 0) {
+                longHistory.push(pop);
+                // Limit history width
+                if(longHistory.length > 100) longHistory.shift();
+                drawGraph(longCtx, longHistory, '#ff0055');
+            }
+        }
+
+        function drawGraph(ctx, data, colorStr) {
+            const w = ctx.canvas.width = ctx.canvas.offsetWidth;
+            const h = ctx.canvas.height = ctx.canvas.offsetHeight;
+            ctx.clearRect(0,0,w,h);
+            
+            if(data.length < 2) return;
+
+            const max = Math.max(...data, 10);
+            const min = Math.min(...data, 0);
+            
+            ctx.beginPath();
+            ctx.strokeStyle = colorStr;
+            ctx.lineWidth = 2;
+            
+            for(let i=0; i<data.length; i++) {
+                const x = (i/(data.length-1))*w;
+                const y = h - ((data[i]-min)/(max-min)*h * 0.9); // 0.9 to keep inside top padding
+                if(i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
+            }
+            ctx.stroke();
+            
+            // Gradient Fill
+            ctx.lineTo(w, h);
+            ctx.lineTo(0, h);
+            const grad = ctx.createLinearGradient(0,0,0,h);
+            grad.addColorStop(0, colorStr);
+            grad.addColorStop(1, 'transparent');
+            ctx.fillStyle = grad;
+            ctx.globalAlpha = 0.3;
+            ctx.fill();
+            ctx.globalAlpha = 1.0;
+        }
+
+        /** --- AUDIO --- */
+        function initAudio() {
+            const AudioContext = window.AudioContext || window.webkitAudioContext;
+            audioCtx = new AudioContext();
+            masterGain = audioCtx.createGain();
+            masterGain.gain.value = 0.05; 
+            masterGain.connect(audioCtx.destination);
+        }
+
+        function playAudio(pop, activity) {
+            if (!audioCtx || activity === 0) return;
+            const now = audioCtx.currentTime;
+            if (now - lastAudioTime < 0.1) return;
+
+            const intensity = Math.min(activity / 150, 1.0);
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            
+            // Pentatonic Frequencies
+            const notes = [196.0, 220.0, 261.6, 293.6, 329.6, 392.0, 440.0, 523.2];
+            const idx = Math.floor((generation % 8) + (intensity * 4)) % notes.length;
+            
+            osc.frequency.value = notes[idx];
+            osc.type = intensity > 0.6 ? 'square' : 'sine';
+
+            gain.gain.setValueAtTime(0, now);
+            gain.gain.linearRampToValueAtTime(0.1 + (intensity*0.1), now + 0.03);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + 0.3);
+
+            osc.connect(gain);
+            gain.connect(masterGain);
+            osc.start(now);
+            osc.stop(now + 0.4);
+            lastAudioTime = now;
+        }
+
+        /** --- CONTROLS --- */
+        function randomizeSymmetrical() {
+            isRunning = false;
+            document.getElementById('playBtn').classList.remove('active');
+            document.getElementById('playBtn').innerText = "START";
+            
+            gridState.fill(0); gridPrev.fill(0); gridNext.fill(0); ageGrid.fill(0);
+            morphProgress = 1.0; generation = 0;
+            
+            // Reset Charts
+            popHistory = []; longHistory = [];
+            drawGraph(shortCtx, [], '#000');
+            drawGraph(longCtx, [], '#000');
+
+            const range = Math.floor(gridSize/3);
+            const cx = gridSize/2;
+
+            for(let z=0; z<range; z++){
+                for(let y=0; y<range; y++){
+                    for(let x=0; x<range; x++){
+                        if(Math.random() > 0.75) {
+                            const s = [1, -1];
+                            s.forEach(sx => s.forEach(sy => s.forEach(sz => {
+                                setCell(cx + (x*sx), cx + (y*sy), cx + (z*sz), 1);
+                            })));
+                        }
+                    }
+                }
+            }
+            renderInstances();
+        }
+
+        function setCell(x,y,z,v) {
+            if(x>=0 && x<gridSize && y>=0 && y<gridSize && z>=0 && z<gridSize) {
+                const i = x + y*gridSize + z*gridSize*gridSize;
+                gridState[i] = v; gridPrev[i] = v; gridNext[i] = v; ageGrid[i] = v;
+            }
+        }
+
+        const playBtn = document.getElementById('playBtn');
+        playBtn.addEventListener('click', () => {
+            isRunning = !isRunning;
+            playBtn.innerText = isRunning ? "PAUSE" : "START";
+            playBtn.classList.toggle('active');
+        });
+
+        document.getElementById('stepBtn').addEventListener('click', () => {
+            isRunning = false; morphProgress = 1.0; computeNextGen();
+            playBtn.classList.remove('active'); playBtn.innerText = "START";
+        });
+        document.getElementById('randomBtn').addEventListener('click', randomizeSymmetrical);
+        document.getElementById('clearBtn').addEventListener('click', () => {
+            isRunning = false; gridState.fill(0); gridNext.fill(0); ageGrid.fill(0); 
+            renderInstances();
+        });
+
+        const audioBtn = document.getElementById('audioBtn');
+        audioBtn.addEventListener('click', () => {
+            if(!audioCtx) initAudio();
+            if(audioCtx.state === 'suspended') audioCtx.resume();
+            isAudioEnabled = !isAudioEnabled;
+            audioBtn.classList.toggle('audio-on');
+            audioBtn.innerText = isAudioEnabled ? "AUDIO ON 🔊" : "ENABLE AUDIO 🔇";
+        });
+
+        document.getElementById('speedRange').addEventListener('input', e => morphSpeed = e.target.value / 20);
+        document.getElementById('ruleSelect').addEventListener('change', e => currentRule = RULES[e.target.value]);
+        
+        document.getElementById('sizeSelect').addEventListener('change', e => {
+            gridSize = parseInt(e.target.value);
+            scene.remove(scene.getObjectByName("cage"));
+            resizeArrays(); createCage(); createMesh(); randomizeSymmetrical();
+            camera.position.set(gridSize * 1.8, gridSize * 1.6, gridSize * 1.8);
+            controls.target.set(gridSize/2, gridSize/2, gridSize/2);
+        });
+
+        // Drag
+        const panel = document.getElementById('dragPanel');
+        const handle = document.getElementById('dragHandle');
+        let isDragging=false, dx=0, dy=0;
+        handle.onmousedown = e => { if(e.target.id!=='collapseBtn'){ isDragging=true; dx=e.clientX-panel.offsetLeft; dy=e.clientY-panel.offsetTop; }};
+        window.onmousemove = e => { if(isDragging){ panel.style.left=`${e.clientX-dx}px`; panel.style.top=`${e.clientY-dy}px`; }};
+        window.onmouseup = () => isDragging=false;
+        document.getElementById('collapseBtn').onclick = () => panel.classList.toggle('collapsed');
+
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth/window.innerHeight; camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        init();
+    </script>
+</body>
+</html>

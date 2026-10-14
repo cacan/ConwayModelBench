@@ -1,0 +1,56 @@
+# Dependencies
+node_modules/
+
+# OS junk
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Editor noise
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Tooling internal state
+.dsh-vision-toolkit/
+.dsh-tmp/
+
+# Logs
+*.log
+npm-debug.log*
+
+# Bench run artifacts (regeneratable)
+screenshots/*.png.tmp
+
+# Generated manifests (kept in git for the canonical repo, ignored for transient runs)
+# outputs/manifest.local.json
+
+# Don't track the legacy random screenshot (replaced by per-model screenshots)
+game-randomized.png
+
+# ---------------------------------------------------------------------------
+# Local-only workspace layer. Not part of the public benchmark.
+# Kept out of git because it holds account/identity details and personal
+# machine paths, and because this repo is published publicly.
+# ---------------------------------------------------------------------------
+
+# GTM / Google workspace identity and SOP scaffolding: account email, GCP
+# project id, Chrome profile paths, local service endpoints.
+.agent/
+
+# project-documentation-lifecycle store plus the tooling that reads it.
+# The published repo carries the benchmark, the generated report, and
+# ANALYSIS.md; the lifecycle store stays local.
+.project_documentation/
+scripts/project_docs.py
+scripts/sync_qdrant.py
+.githooks/
+.gitattributes
+
+# Local agent operating instructions (personal paths, LAN gateway config).
+AGENTS.md
+
+# Python bytecode
+__pycache__/
+*.pyc

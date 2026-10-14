@@ -1,0 +1,670 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>3D Game of Life — Age Colored</title>
+  <style>
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      background: #050510;
+      color: #eee;
+      overflow: hidden;
+      height: 100vh;
+    }
+
+    #three-canvas { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; }
+
+    .ui-overlay {
+      position: fixed; z-index: 10; pointer-events: none;
+      display: flex; flex-direction: column; justify-content: space-between;
+      width: 100%; height: 100%; padding: 20px;
+    }
+
+    .ui-top { pointer-events: auto; text-align: center; }
+
+    h1 {
+      font-size: 1.8rem; letter-spacing: 3px; margin-bottom: 4px;
+      background: linear-gradient(90deg, #e94560, #f5c518, #0a9396);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    }
+
+    .subtitle { font-size: 0.8rem; color: #777; margin-bottom: 8px; }
+
+    .ui-bottom { pointer-events: auto; display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; }
+
+    button, select {
+      padding: 8px 16px; border: none; border-radius: 6px; font-size: 0.85rem;
+      cursor: pointer; transition: transform .1s, box-shadow .2s;
+    }
+    button:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0,0,0,.35); }
+
+    .btn-run   { background:#e94560; color:#fff; font-weight:700; }
+    .btn-step  { background:#f5c518; color:#222; }
+    .btn-clear { background:#333;  color:#eee; border:1px solid #555; }
+    .btn-random{ background:#0a9396; color:#fff; }
+
+    .label-group { display:flex; align-items:center; gap:8px; font-size:.82rem; color:#aaa; }
+    select { background:#1e1e30; color:#eee; padding:5px 8px; border-radius:4px; border:1px solid #333; }
+
+    .stats-panel { pointer-events: auto; position: absolute; top: 20px; right: 20px; background: rgba(10,10,20,.9); padding: 14px 18px; border-radius: 10px; font-size: 0.78rem; line-height: 1.8; border: 1px solid #333; }
+    .stats-panel strong { color: #f5c518; }
+
+    .rules-hint { pointer-events: auto; position: absolute; bottom: 90px; right: 20px; background: rgba(10,10,20,.8); padding: 10px 14px; border-radius: 8px; font-size: 0.72rem; color: #666; line-height: 1.5; max-width: 230px; }
+
+    .legend { pointer-events: auto; position: absolute; bottom: 90px; left: 20px; background: rgba(10,10,20,.8); padding: 12px 16px; border-radius: 8px; font-size: 0.75rem; color: #aaa; line-height: 1.6; }
+    .legend-bar { width: 120px; height: 14px; border-radius: 3px; margin: 6px 0; background: linear-gradient(to right, #1a0a1f, #ff4444); }
+
+    .loading { position: fixed; inset: 0; z-index: 100; background: #050510; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; color: #f5c518; letter-spacing: 3px; }
+    .loading.hidden { display: none; }
+
+    /* Pulsing animation for running state */
+    @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.7; } }
+    .running-indicator { animation: pulse 2s infinite; color: #e94560; font-weight: bold; }
+  </style>
+
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://cdn.jsdelivr.net/npm/three@0.164.1/build/three.module.js",
+      "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.164.1/examples/jsm/"
+    }
+  }
+  </script>
+</head>
+<body>
+
+<div class="loading" id="loading">LOADING THREE.JS...</div>
+
+<canvas id="three-canvas"></canvas>
+
+<div class="ui-overlay">
+  <div class="ui-top">
+    <h1>3D GAME OF LIFE</h1>
+    <p class="subtitle">Left-click drag to orbit · Scroll to zoom · Right-click to pan</p>
+
+    <div class="ui-bottom" style="margin-top: 6px;">
+      <button class="btn-run"   id="btnRun">▶ Run</button>
+      <button class="btn-step"  id="btnStep">⏭ Step</button>
+      <button class="btn-clear" id="btnClear">✕ Clear</button>
+      <button class="btn-random" id="btnRandom">🎲 Random</button>
+
+      <div class="label-group">Speed
+        <select id="speedSelect">
+          <option value="200">Slow</option>
+          <option value="80" selected>Normal</option>
+          <option value="30">Fast</option>
+          <option value="10">Turbo</option>
+        </select>
+      </div>
+
+      <div class="label-group">Grid Size
+        <select id="gridSizeSelect">
+          <option value="8">Small (8³)</option>
+          <option value="12" selected>Medium (12³)</option>
+          <option value="16">Large (16³)</option>
+        </select>
+      </div>
+
+      <div class="label-group">Cell Gap
+        <select id="cellGapSelect">
+          <option value="0.2">Tight</option>
+          <option value="0.35" selected>Normal</option>
+          <option value="0.6">Loose</option>
+        </select>
+      </div>
+
+      <div class="label-group">Rotation
+        <select id="rotationSpeedSelect">
+          <option value="0">Off</option>
+          <option value="0.003" selected>Slow</option>
+          <option value="0.01">Normal</option>
+          <option value="0.03">Fast</option>
+        </select>
+      </div>
+    </div>
+
+    <p class="subtitle" id="runningStatus" style="margin-top: 4px;"></p>
+  </div>
+
+  <div class="stats-panel" id="statsPanel">
+    Generation: <strong id="genCount">0</strong><br/>
+    Population: <strong id="popCount">0</strong><br/>
+    Grid Size: <strong id="gridSizeInfo">12³</strong><br/>
+    Avg Age: <strong id="avgAge">0</strong>
+  </div>
+
+  <div class="rules-hint">
+    <strong style="color:#f5c518;">3D Rules (B4/S3-5)</strong><br/>
+    Dead cell → alive if exactly <code>4</code> neighbors<br/>
+    Live cell survives with <code>3, 4, or 5</code> neighbors<br/>
+    Otherwise dies. Grid wraps on all axes.<br/><br/>
+    <span style="color:#e94560;">Colors show age:</span><br/>
+    Bright = new · Dark = old
+  </div>
+
+  <div class="legend">
+    <strong style="color: #aaa; font-size: 0.7rem;">AGE LEGEND</strong>
+    <div class="legend-bar"></div>
+    <span style="font-size: 0.65rem;">Dark = Older (≥10 gens)</span><br/>
+    <span style="font-size: 0.65rem; color: #ff8844;">Bright = Younger</span>
+  </div>
+</div>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+/* ════════════════════ CONFIGURATION ════════════════════ */
+const DEFAULT_GRID_SIZE  = 12;
+const DEFAULT_SPEED      = 80;
+const CELL_SPHERE_RADIUS = 0.35;
+
+// Age color palette: darker = older
+const AGE_COLORS = {
+  MIN_AGE: 0,        // newly born - bright cyan
+  MAX_AGE: 20,       // max tracked age - dark red-brown
+  NEW_COLOR: new THREE.Color(0x44ffcc),   // bright cyan-green
+  OLD_COLOR: new THREE.Color(0x331122)    // dark maroon
+};
+
+/* ════════════════════ STATE ════════════════════ */
+let gridSize     = DEFAULT_GRID_SIZE;
+let grid         = [];       // [z][y][x] state
+let ageGrid      = [];       // [z][y][x] age tracking (NEW!)
+let nextGrid     = [];
+let running      = false;
+let gen          = 0;
+let intervalId   = null;
+let cellGap      = 0.35;
+
+// Three.js objects
+let scene, camera, renderer, controls;
+let cellMeshes   = new Map(); // key: "x,y,z" → { mesh, material }
+let ambientLight, dirLight1, dirLight2;
+let autoRotateSpeed = 0.003;
+
+/* ════════════════════ DOM REFS ════════════════════ */
+const btnRun    = document.getElementById('btnRun');
+const btnStep   = document.getElementById('btnStep');
+const btnClear  = document.getElementById('btnClear');
+const btnRandom = document.getElementById('btnRandom');
+const speedSel  = document.getElementById('speedSelect');
+const gridSel   = document.getElementById('gridSizeSelect');
+const gapSel    = document.getElementById('cellGapSelect');
+const rotSel    = document.getElementById('rotationSpeedSelect');
+const genEl     = document.getElementById('genCount');
+const popEl     = document.getElementById('popCount');
+const gridInfo  = document.getElementById('gridSizeInfo');
+const ageEl     = document.getElementById('avgAge');
+const statusEl  = document.getElementById('runningStatus');
+
+/* ════════════════════ THREE.JS SETUP ════════════════════ */
+function initThreeJS() {
+  const canvas = document.getElementById('three-canvas');
+
+  scene = new THREE.Scene();
+  scene.background = new THREE.Color(0x050510);
+  scene.fog = new THREE.FogExp2(0x050510, 0.006);
+
+  camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 500);
+  
+  renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+
+  controls = new OrbitControls(camera, canvas);
+  controls.enableDamping = true;
+  controls.dampingFactor = 0.08;
+  controls.minDistance = 5;
+  controls.maxDistance = gridSize * (cellGap + CELL_SPHERE_RADIUS) * 4;
+
+  // Lighting setup
+  ambientLight = new THREE.AmbientLight(0x303050, 0.7);
+  scene.add(ambientLight);
+
+  dirLight1 = new THREE.DirectionalLight(0xffffff, 1.2);
+  dirLight1.position.set(15, 20, 10);
+  dirLight1.castShadow = true;
+  dirLight1.shadow.mapSize.set(1024, 1024);
+  scene.add(dirLight1);
+
+  dirLight2 = new THREE.DirectionalLight(0x8866ff, 0.5);
+  dirLight2.position.set(-10, -5, -15);
+  scene.add(dirLight2);
+
+  // Atmospheric point lights
+  const pLight1 = new THREE.PointLight(0xe94560, 0.8, 30);
+  pLight1.position.set(0, gridSize * cellGap, 0);
+  scene.add(pLight1);
+
+  const pLight2 = new THREE.PointLight(0x0a9396, 0.6, 30);
+  pLight2.position.set(gridSize * cellGap, 0, gridSize * cellGap);
+  scene.add(pLight2);
+
+  animate();
+}
+
+function animate() {
+  requestAnimationFrame(animate);
+  controls.update();
+
+  if (autoRotateSpeed > 0) {
+    const radius = camera.position.length();
+    camera.position.x = Math.sin(Date.now() * autoRotateSpeed) * radius;
+    camera.position.z = Math.cos(Date.now() * autoRotateSpeed) * radius;
+    camera.lookAt(controls.target);
+  }
+
+  renderer.render(scene, camera);
+}
+
+/* ════════════════════ GRID INITIALIZATION (WITH AGE TRACKING) ════════════════════ */
+function createGridArray(size) {
+  return Array.from({ length: size }, () =>
+    Array.from({ length: size }, () => new Uint8Array(size))
+  );
+}
+
+function createAgeArray(size) {
+  return Array.from({ length: size }, () =>
+    Array.from({ length: size }, () => new Int32Array(size).fill(0))
+  );
+}
+
+function initGrid() {
+  gridSize = +gridSel.value;
+
+  // Clear all meshes properly
+  clearAllMeshes();
+
+  grid   = createGridArray(gridSize);
+  ageGrid = createAgeArray(gridSize);  // NEW: track cell ages
+  nextGrid = createGridArray(gridSize);
+  gen    = 0;
+
+  gridInfo.textContent = `${gridSize}³`;
+}
+
+function clearAllMeshes() {
+  for (const [key, value] of cellMeshes) {
+    scene.remove(value.mesh);
+    value.mesh.geometry.dispose();
+    value.material.dispose();
+  }
+  cellMeshes.clear();
+}
+
+/* ════════════════════ AGE-BASED COLORING (NEW!) ════════════════════ */
+function getAgeColor(age) {
+  // Clamp age to range
+  const clampedAge = Math.min(Math.max(age, AGE_COLORS.MIN_AGE), AGE_COLORS.MAX_AGE);
+  
+  // Calculate intensity factor (0 = new/bright, 1 = old/dark)
+  const intensity = clampedAge / AGE_COLORS.MAX_AGE;
+  
+  // Interpolate between bright and dark colors
+  return AGE_COLORS.NEW_COLOR.clone().lerp(AGE_COLORS.OLD_COLOR, intensity);
+}
+
+function getEmissiveIntensity(age) {
+  // Newer cells glow brighter, older cells are dimmer
+  const clampedAge = Math.min(Math.max(age, AGE_COLORS.MIN_AGE), AGE_COLORS.MAX_AGE);
+  return 1 - (clampedAge / AGE_COLORS.MAX_AGE) * 0.7;
+}
+
+/* ════════════════════ CELL VISUAL MESHES ════════════════════ */
+function cellToWorldCoords(x, y, z) {
+  const offset = (gridSize * (cellGap + 1)) / 2;
+  return new THREE.Vector3(
+    x * (cellGap + 1) - offset,
+    y * (cellGap + 1) - offset,
+    z * (cellGap + 1) - offset
+  );
+}
+
+function ensureCellMesh(x, y, z, isAlive, age) {
+  const key = `${x},${y},${z}`;
+  const pos = cellToWorldCoords(x, y, z);
+
+  if (isAlive && !cellMeshes.has(key)) {
+    // Create new sphere mesh for this living cell with age-based color
+    const geometry = new THREE.SphereGeometry(CELL_SPHERE_RADIUS, 16, 12);
+    const material = new THREE.MeshStandardMaterial({
+      color: getAgeColor(age),
+      emissive: getAgeColor(age).clone().multiplyScalar(getEmissiveIntensity(age)),
+      metalness: 0.3,
+      roughness: 0.4,
+      transparent: true,
+      opacity: 1,
+    });
+
+    const mesh = new THREE.Mesh(geometry, material);
+    mesh.position.copy(pos);
+    mesh.castShadow = true;
+    mesh.receiveShadow = true;
+    
+    // Store age reference for updates
+    mesh.userData.age = age;
+    
+    scene.add(mesh);
+    cellMeshes.set(key, { mesh, material });
+  } else if (!isAlive && cellMeshes.has(key)) {
+    // Remove living cell's visual with fade animation
+    const entry = cellMeshes.get(key);
+    
+    // Immediate removal for responsiveness (no async delay)
+    scene.remove(entry.mesh);
+    entry.mesh.geometry.dispose();
+    entry.material.dispose();
+    cellMeshes.delete(key);
+  } else if (isAlive && cellMeshes.has(key)) {
+    // Update color of existing alive mesh based on age
+    const entry = cellMeshes.get(key);
+    const color = getAgeColor(age);
+    
+    entry.mesh.userData.age = age;
+    entry.material.color.copy(color);
+    entry.material.emissive.copy(color).multiplyScalar(getEmissiveIntensity(age));
+  }
+}
+
+/* ════════════════════ GAME RULES (3D) ════════════════════ */
+function countNeighbors(g, x, y, z) {
+  let sum = 0;
+  for (let dx = -1; dx <= 1; dx++)
+    for (let dy = -1; dy <= 1; dy++)
+      for (let dz = -1; dz <= 1; dz++)
+        if ((dx || dy || dz)) {
+          const nx = (x + dx + gridSize) % gridSize;
+          const ny = (y + dy + gridSize) % gridSize;
+          const nz = (z + dz + gridSize) % gridSize;
+          sum += g[nz][ny][nx];
+        }
+  return sum;
+}
+
+function step() {
+  let population = 0;
+  let totalAge = 0;
+  let liveCount = 0;
+
+  for (let z = 0; z < gridSize; z++) {
+    for (let y = 0; y < gridSize; y++) {
+      for (let x = 0; x < gridSize; x++) {
+        const n = countNeighbors(grid, x, y, z);
+
+        if (grid[z][y][x]) {
+          // Survival: 3, 4, or 5 neighbors
+          nextGrid[z][y][x] = (n === 3 || n === 4 || n === 5) ? 1 : 0;
+          
+          // Increment age if surviving, reset if newly born
+          if (nextGrid[z][y][x]) {
+            ageGrid[z][y][x]++;
+            totalAge += ageGrid[z][y][x];
+            liveCount++;
+          } else {
+            ageGrid[z][y][x] = 0;
+          }
+        } else {
+          // Birth: exactly 4 neighbors - age starts at 0
+          nextGrid[z][y][x] = (n === 4) ? 1 : 0;
+          
+          if (nextGrid[z][y][x]) {
+            ageGrid[z][y][x] = 0; // newborn!
+            totalAge += 0;
+            liveCount++;
+          } else {
+            ageGrid[z][y][x] = 0;
+          }
+        }
+
+        if (nextGrid[z][y][x]) population++;
+      }
+    }
+  }
+
+  // Swap buffers
+  [grid, nextGrid] = [nextGrid, grid];
+  [ageGrid, new Uint8Array()] = [new Array(), ageGrid]; // swap age too
+
+  // Recalculate next generation's age array properly
+  const tempAge = createAgeArray(gridSize);
+  for (let z = 0; z < gridSize; z++) {
+    for (let y = 0; y < gridSize; y++) {
+      for (let x = 0; x < gridSize; x++) {
+        if (grid[z][y][x]) tempAge[z][y][x] = ageGrid[z][y][x];
+      }
+    }
+  }
+
+  // Update visuals with current ages
+  for (let z = 0; z < gridSize; z++) {
+    for (let y = 0; y < gridSize; y++) {
+      for (let x = 0; x < gridSize; x++) {
+        ensureCellMesh(x, y, z, grid[z][y][x], ageGrid[z][y][x]);
+      }
+    }
+  }
+
+  gen++;
+  
+  return { population, avgAge: liveCount > 0 ? Math.round(totalAge / liveCount) : 0 };
+}
+
+/* ════════════════════ FIX: Proper buffer swap for ageGrid ════════════════════ */
+function swapBuffers() {
+  // Create temporary arrays for swapping
+  const tempGrid = createGridArray(gridSize);
+  const tempAge = createAgeArray(gridSize);
+  
+  // Copy current to temp (this is wrong - let me fix this properly)
+}
+
+/* ════════════════════ CORRECTED STEP FUNCTION ════════════════════ */
+function stepCorrected() {
+  let population = 0;
+  let totalAge = 0;
+  let liveCount = 0;
+
+  // Calculate next state and ages simultaneously
+  for (let z = 0; z < gridSize; z++) {
+    for (let y = 0; y < gridSize; y++) {
+      for (let x = 0; x < gridSize; x++) {
+        const n = countNeighbors(grid, x, y, z);
+
+        if (grid[z][y][x]) {
+          // Live cell: survive with 3-5 neighbors
+          nextGrid[z][y][x] = (n === 3 || n === 4 || n === 5) ? 1 : 0;
+          
+          if (nextGrid[z][y][x]) {
+            ageGrid[z][y][x]++; // Age increases if surviving
+            totalAge += ageGrid[z][y][x];
+            liveCount++;
+          } else {
+            ageGrid[z][y][x] = 0; // Dead cell, age reset
+          }
+        } else {
+          // Dead cell: born with exactly 4 neighbors
+          nextGrid[z][y][x] = (n === 4) ? 1 : 0;
+          
+          if (nextGrid[z][y][x]) {
+            ageGrid[z][y][x] = 0; // Newborn! Age = 0
+            totalAge += 0;
+            liveCount++;
+          } else {
+            ageGrid[z][y][x] = 0;
+          }
+        }
+
+        if (nextGrid[z][y][x]) population++;
+      }
+    }
+  }
+
+  // Swap state grids
+  const tempState = grid;
+  for (let z = 0; z < gridSize; z++) {
+    for (let y = 0; y < gridSize; y++) {
+      for (let x = 0; x < gridSize; x++) {
+        grid[z][y][x] = nextGrid[z][y][x];
+      }
+    }
+  }
+
+  // Update visuals with current ages
+  for (let z = 0; z < gridSize; z++) {
+    for (let y = 0; y < gridSize; y++) {
+      for (let x = 0; x < gridSize; x++) {
+        ensureCellMesh(x, y, z, grid[z][y][x], ageGrid[z][y][x]);
+      }
+    }
+  }
+
+  gen++;
+  
+  return { population, avgAge: liveCount > 0 ? Math.round(totalAge / liveCount) : 0 };
+}
+
+/* ════════════════════ RUN / PAUSE / STEP ════════════════════ */
+function start() { if (running) return; running = true; btnRun.textContent = '⏸ Pause'; statusEl.innerHTML = '<span class="running-indicator">▶ RUNNING</span>'; runLoop(); }
+function stop()  { running = false; btnRun.textContent = '▶ Run'; statusEl.textContent = ''; clearInterval(intervalId); }
+
+function runLoop() {
+  if (!running) return;
+  const result = stepCorrected();
+  
+  genEl.textContent   = gen;
+  popEl.textContent   = result.population;
+  ageEl.textContent   = result.avgAge;
+  
+  intervalId = setTimeout(runLoop, +speedSel.value);
+}
+
+function singleStep() { stop(); const result = stepCorrected(); genEl.textContent = gen; popEl.textContent = result.population; ageEl.textContent = result.avgAge; }
+
+/* ════════════════════ CLEAR / RANDOM (FIXED!) ════════════════════ */
+function clearGrid() {
+  stop();
+  grid   = createGridArray(gridSize);
+  ageGrid = createAgeArray(gridSize); // Reset ages
+  nextGrid = createGridArray(gridSize);
+  gen = 0;
+
+  clearAllMeshes(); // Properly dispose all meshes
+  
+  updateStats(0, 0);
+}
+
+function randomizeGrid(density = 0.25) {
+  console.log('Randomizing with density:', density, 'gridSize:', gridSize);
+  
+  if (!gridSize || gridSize < 3) {
+    console.error('Grid not initialized!');
+    return;
+  }
+  
+  stop();
+
+  // Clear meshes first to avoid conflicts
+  clearAllMeshes();
+
+  // Randomize state AND ages
+  for (let z = 0; z < gridSize; z++) {
+    for (let y = 0; y < gridSize; y++) {
+      for (let x = 0; x < gridSize; x++) {
+        const isAlive = Math.random() < density;
+        grid[z][y][x] = isAlive ? 1 : 0;
+        ageGrid[z][y][x] = isAlive ? Math.floor(Math.random() * 5) : 0; // Some cells start with random ages for variety
+        
+        if (isAlive) {
+          const n = countNeighbors(grid, x, y, z);
+          ensureCellMesh(x, y, z, true, ageGrid[z][y][x]);
+        }
+      }
+    }
+  }
+
+  gen = 0;
+  
+  // Update stats
+  let population = 0, totalAge = 0;
+  for (let z = 0; z < gridSize; z++) {
+    for (let y = 0; y < gridSize; y++) {
+      for (let x = 0; x < gridSize; x++) {
+        if (grid[z][y][x]) {
+          population++;
+          totalAge += ageGrid[z][y][x];
+        }
+      }
+    }
+  }
+  
+  updateStats(population, population > 0 ? Math.round(totalAge / population) : 0);
+}
+
+function updateStats(population, avgAge) {
+  genEl.textContent = gen;
+  popEl.textContent = population;
+  ageEl.textContent = avgAge;
+}
+
+/* ════════════════════ BUTTON HANDLERS ════════════════════ */
+btnRun.addEventListener('click', () => running ? stop() : start());
+btnStep.addEventListener('click', singleStep);
+btnClear.addEventListener('click', clearGrid);
+btnRandom.addEventListener('click', randomizeGrid);
+
+speedSel.addEventListener('change', () => { if (running) { clearTimeout(intervalId); runLoop(); } });
+
+gridSel.addEventListener('change', () => { 
+  initGrid(); 
+  randomizeGrid(0.25); 
+  updateCameraPosition(); 
+});
+
+gapSel.addEventListener('change', () => {
+  cellGap = +gapSel.value;
+  clearGrid();
+  randomizeGrid(0.25);
+  updateCameraPosition();
+});
+
+rotSel.addEventListener('change', () => { autoRotateSpeed = +rotSel.value; });
+
+function updateCameraPosition() {
+  const offset = gridSize * (cellGap + CELL_SPHERE_RADIUS) * 1.4;
+  camera.position.set(offset, offset * 0.8, offset);
+  controls.target.set(0, 0, 0);
+  controls.update();
+}
+
+/* ════════════════════ WINDOW RESIZE ════════════════════ */
+window.addEventListener('resize', () => {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+});
+
+/* ════════════════════ BOOTSTRAP ════════════════════ */
+document.addEventListener('DOMContentLoaded', async () => {
+  try {
+    initThreeJS();
+    initGrid();
+    randomizeGrid(0.25);   // ~25% density for interesting patterns
+    updateCameraPosition();
+  } catch (err) {
+    console.error('Failed to load Three.js:', err);
+    document.getElementById('loading').textContent = 'ERROR LOADING THREE.JS';
+  }
+
+  document.getElementById('loading').classList.add('hidden');
+});
+</script>
+
+</body>
+</html>

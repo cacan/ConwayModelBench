@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Conway's Game of Life</title>
+  <style>
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      background: #1a1a2e;
+      color: #eee;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-height: 100vh;
+      padding: 24px 16px;
+    }
+
+    h1 {
+      font-size: 2rem; margin-bottom: 4px; letter-spacing: 1px;
+      background: linear-gradient(90deg, #e94560, #f5c518);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    }
+
+    .subtitle { font-size: 0.85rem; color: #888; margin-bottom: 20px; }
+
+    /* ── Canvas wrapper ── */
+    .canvas-wrapper {
+      border: 3px solid #e94560; border-radius: 8px; overflow: hidden;
+      box-shadow: 0 0 40px rgba(233,69,96,.15);
+      /* prevent any external scroll */
+    }
+
+    canvas { display: block; cursor: crosshair; background: #0f0f1a; }
+
+    /* ── Controls bar ── */
+    .controls {
+      display: flex; flex-wrap: wrap; gap: 12px; margin-top: 20px;
+      align-items: center; justify-content: center;
+    }
+
+    button, select {
+      padding: 8px 18px; border: none; border-radius: 6px; font-size: .9rem;
+      cursor: pointer; transition: transform .1s, box-shadow .2s;
+    }
+    button:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0,0,0,.35); }
+    button:active { transform: translateY(0); }
+
+    .btn-run   { background:#e94560; color:#fff; font-weight:700; }
+    .btn-step  { background:#f5c518; color:#222; }
+    .btn-clear { background:#333;  color:#eee; border:1px solid #555; }
+    .btn-random{ background:#0a9396; color:#fff; }
+
+    .label-group { display:flex; align-items:center; gap:8px; font-size:.85rem; color:#aaa; }
+    select { background:#2a2a3e; color:#eee; padding:6px 10px; border-radius:4px; }
+
+    /* ── Stats row ── */
+    .stats { margin-top:14px; font-size:.85rem; color:#777; display:flex; gap:24px; }
+    .stats span strong { color:#f5c518; }
+
+    /* ── Rules info ── */
+    .rules-info { margin-top:24px; max-width:600px; text-align:center; font-size:.78rem; color:#555; line-height:1.6; }
+    .rules-info code { background:#2a2a3e; padding:1px 4px; border-radius:3px; color:#ccc; font-size:.78rem; }
+  </style>
+</head>
+<body>
+
+<h1>Conway's Game of Life</h1>
+<p class="subtitle">Click cells to toggle · Drag to paint</p>
+
+<div class="canvas-wrapper">
+  <canvas id="gameCanvas"></canvas>
+</div>
+
+<div class="controls">
+  <button class="btn-run"   id="btnRun">▶ Run</button>
+  <button class="btn-step"  id="btnStep">⏭ Step</button>
+  <button class="btn-clear" id="btnClear">✕ Clear</button>
+  <button class="btn-random" id="btnRandom">🎲 Random</button>
+
+  <div class="label-group">Speed
+    <select id="speedSelect">
+      <option value="200">Slow</option>
+      <option value="80" selected>Normal</option>
+      <option value="30">Fast</option>
+      <option value="10">Turbo</option>
+    </select>
+  </div>
+
+  <div class="label-group">Cell Size
+    <select id="cellSizeSelect">
+      <option value="8">Tiny</option>
+      <option value="12">Small</option>
+      <option value="18" selected>Medium</option>
+      <option value="24">Large</option>
+      <option value="36">X-Large</option>
+    </select>
+  </div>
+</div>
+
+<div class="stats">
+  <span>Generation: <strong id="genCount">0</strong></span>
+  <span>Population: <strong id="popCount">0</strong></span>
+  <span>Grid: <strong id="gridSizeInfo"></strong></span>
+</div>
+
+<p class="rules-info">
+  Rules — A dead cell with exactly <code>3</code> live neighbors becomes alive.<br/>
+  A live cell with <code>2</code> or <code>3</code> neighbors stays alive. All other cells die.
+</p>
+
+<script>
+/* ════════════════════ CONFIGURATION ════════════════════ */
+const DEFAULT_CELL_SIZE = 18;
+const DEFAULT_SPEED     = 80;   // ms per generation
+
+const VERT_PAD          = 280;  // px reserved for controls + padding (top+bottom)
+const CANVAS_TOP_OFFSET = 70;   // px from body top to canvas
+
+/* ════════════════════ STATE ════════════════════ */
+let cellSize    = DEFAULT_CELL_SIZE;
+let cols        = 0;
+let rows        = 0;
+let grid        = [];
+let nextGrid    = [];
+let running     = false;
+let gen         = 0;
+let intervalId  = null;
+
+/* ════════════════════ DOM REFS ════════════════════ */
+const canvas    = document.getElementById('gameCanvas');
+const ctx       = canvas.getContext('2d');
+const btnRun    = document.getElementById('btnRun');
+const btnStep   = document.getElementById('btnStep');
+const btnClear  = document.getElementById('btnClear');
+const btnRandom = document.getElementById('btnRandom');
+const speedSel  = document.getElementById('speedSelect');
+const cellSel   = document.getElementById('cellSizeSelect');
+const genEl     = document.getElementById('genCount');
+const popEl     = document.getElementById('popCount');
+const gridInfo  = document.getElementById('gridSizeInfo');
+
+/* ════════════════════ HELPERS ════════════════════ */
+function createEmpty(r, c) { return Array.from({ length: r }, () => new Uint8Array(c)); }
+
+function countNeighbors(g, r, c) {
+  let sum = 0;
+  for (let dr = -1; dr <= 1; dr++)
+    for (let dc = -1; dc <= 1; dc++)
+      if ((dr || dc)) {
+        const nr = (r + dr + rows) % rows;
+        const nc = (c + dc + cols) % cols;
+        sum += g[nr][nc];
+      }
+  return sum;
+}
+
+/* ════════════════════ GRID INIT / SIZING ════════════════════ */
+/** Calculate max width & height that fit in viewport, then derive cell count. */
+function computeDimensions() {
+  const vw = window.innerWidth;
+  const vh = window.innerHeight;
+
+  // Available canvas area
+  const availW = Math.min(vw - 48, 960);               // max width constraint
+  const availH = vh - CANVAS_TOP_OFFSET - VERT_PAD;    // avoid scrolling vertically
+
+  return { availW, availH };
+}
+
+/** Pick the best fit: try both aspect ratios and pick whichever fits. */
+function selectCanvasSize(availW, availH) {
+  // Try portrait-friendly ratio first (9 cols : 6 rows)
+  const ratio1 = 9 / 6;
+  let h1 = availW / ratio1;
+
+  // Try landscape ratio (16:9)
+  const ratio2 = 16 / 9;
+  let h2 = availW / ratio2;
+
+  if (h1 <= availH && (h2 > availH || h1 >= h2)) return { w: availW, h: Math.floor(h1), ratio: ratio1 };
+  if (h2 <= availH)                              return { w: availW, h: Math.floor(h2), ratio: ratio2 };
+
+  // Fallback: shrink width until either fits
+  const w = Math.min(availW, Math.floor(availH * ratio2));
+  return { w, h: Math.floor(w / ratio2), ratio: ratio2 };
+}
+
+function initGrid() {
+  const dim = computeDimensions();
+  const fit = selectCanvasSize(dim.availW, dim.availH);
+
+  canvas.width  = fit.w;
+  canvas.height = fit.h;
+
+  cols = Math.floor(canvas.width  / cellSize);
+  rows = Math.floor(canvas.height / cellSize);
+
+  // Clamp to reasonable minimums
+  if (cols < 10) { cellSize = Math.floor(canvas.width / 10); cols = 10; }
+  if (rows < 10) { cellSize = Math.floor(canvas.height / 10); rows = 10; }
+
+  canvas.width  = cols * cellSize;
+  canvas.height = rows * cellSize;
+
+  grid   = createEmpty(rows, cols);
+  nextGrid = createEmpty(rows, cols);
+  gen    = 0;
+
+  gridInfo.textContent = `${cols}×${rows}`;
+}
+
+/* ════════════════════ GAME LOGIC ════════════════════ */
+function step() {
+  for (let r = 0; r < rows; r++)
+    for (let c = 0; c < cols; c++) {
+      const n = countNeighbors(grid, r, c);
+      nextGrid[r][c] = grid[r][c] ? (n === 2 || n === 3) : (n === 3);
+    }
+  [grid, nextGrid] = [nextGrid, grid];
+  gen++;
+}
+
+/* ════════════════════ RENDERING ════════════════════ */
+function draw() {
+  // Safety check — don't render uninitialized grids
+  if (!rows || !cols) return;
+
+  ctx.fillStyle = '#0f0f1a';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  // Grid lines
+  ctx.strokeStyle = 'rgba(255,255,255,0.04)';
+  ctx.lineWidth   = 0.5;
+  for (let c = 0; c <= cols; c++) {
+    ctx.beginPath(); ctx.moveTo(c * cellSize + 0.5, 0);
+    ctx.lineTo(c * cellSize + 0.5, rows * cellSize); ctx.stroke();
+  }
+  for (let r = 0; r <= rows; r++) {
+    ctx.beginPath(); ctx.moveTo(0, r * cellSize + 0.5);
+    ctx.lineTo(cols * cellSize, r * cellSize + 0.5); ctx.stroke();
+  }
+
+  // Live cells
+  let population = 0;
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      if (grid[r][c]) {
+        const hue = (r * 13 + c * 7) % 60 + 345;
+        ctx.fillStyle = `hsl(${hue},80%,62%)`;
+        ctx.fillRect(c * cellSize + 1, r * cellSize + 1, cellSize - 2, cellSize - 2);
+        population++;
+      }
+    }
+  }
+
+  genEl.textContent   = gen;
+  popEl.textContent   = population;
+}
+
+/* ════════════════════ RUN / PAUSE / STEP ════════════════════ */
+function start() { if (running) return; running = true; btnRun.textContent = '⏸ Pause'; runLoop(); }
+function stop()  { running = false; btnRun.textContent = '▶ Run'; clearInterval(intervalId); }
+
+function runLoop() {
+  if (!running) return;
+  step(); draw();
+  intervalId = setTimeout(runLoop, +speedSel.value);
+}
+
+function singleStep() { stop(); step(); draw(); }
+
+/* ════════════════════ CLEAR / RANDOM ════════════════════ */
+function clearGrid() {
+  stop();
+  grid   = createEmpty(rows, cols);
+  nextGrid = createEmpty(rows, cols);
+  gen = 0;
+  draw();
+}
+
+function randomizeGrid(density = 0.3) {
+  // Ensure grid exists and has valid dimensions
+  if (!rows || !cols || rows < 5 || cols < 5) {
+    console.warn('Grid not initialized yet');
+    return;
+  }
+  stop();
+  for (let r = 0; r < rows; r++)
+    for (let c = 0; c < cols; c++)
+      grid[r][c] = Math.random() < density ? 1 : 0;
+  gen = 0;
+  draw();
+}
+
+/* ════════════════════ MOUSE INTERACTIONS ════════════════════ */
+function getCellFromMouse(e) {
+  const rect = canvas.getBoundingClientRect();
+  const scaleX = canvas.width  / rect.width;
+  const scaleY = canvas.height / rect.height;
+  return {
+    col: Math.floor((e.clientX - rect.left) * scaleX / cellSize),
+    row: Math.floor((e.clientY - rect.top)  * scaleY / cellSize)
+  };
+}
+
+canvas.addEventListener('mousedown', (e) => {
+  e.preventDefault();
+  const { col, row } = getCellFromMouse(e);
+  if (col >= 0 && col < cols && row >= 0 && row < rows) grid[row][col] ^= 1;
+  draw();
+});
+
+canvas.addEventListener('mousemove', (e) => {
+  const { col, row } = getCellFromMouse(e);
+  if (col >= 0 && col < cols && row >= 0 && row < rows) grid[row][col] = 1;
+  draw();
+});
+
+/* ════════════════════ BUTTON HANDLERS ════════════════════ */
+btnRun.addEventListener('click', () => running ? stop() : start());
+btnStep.addEventListener('click', singleStep);
+btnClear.addEventListener('click', clearGrid);
+btnRandom.addEventListener('click', randomizeGrid);
+
+speedSel.addEventListener('change', () => { if (running) { clearTimeout(intervalId); runLoop(); } });
+
+cellSel.addEventListener('change', () => {
+  stop();
+  cellSize = +cellSel.value;
+  initGrid();   // re-compute dimensions with new cell size
+  randomizeGrid(0.3);
+});
+
+/* ════════════════════ RESIZE HANDLER ════════════════════ */
+function handleResize() {
+  stop();
+  const prevRows = rows;
+  const prevCols = cols;
+  initGrid();   // re-compute to fit new viewport
+
+  // Preserve existing live cells if possible
+  const preserved = createEmpty(rows, cols);
+  for (let r = 0; r < Math.min(prevRows, rows); r++)
+    for (let c = 0; c < Math.min(prevCols, cols); c++)
+      preserved[r][c] = grid ? grid[r][c] : 0;
+
+  // If initGrid already created a fresh empty grid, we need to copy over manually
+  // Actually let's just do it properly:
+  if (grid.length !== rows) {
+    const oldGrid = grid;
+    grid   = createEmpty(rows, cols);
+    nextGrid = createEmpty(rows, cols);
+    for (let r = 0; r < Math.min(prevRows, rows); r++)
+      for (let c = 0; c < Math.min(prevCols, cols); c++)
+        grid[r][c] = oldGrid ? oldGrid[r][c] : 0;
+  }
+
+  draw();
+}
+
+window.addEventListener('resize', handleResize);
+
+/* ════════════════════ BOOTSTRAP ════════════════════ */
+document.addEventListener('DOMContentLoaded', () => {
+  initGrid();
+  randomizeGrid(0.35);   // slightly denser seed for better visibility
+  draw();
+});
+</script>
+
+</body>
+</html>

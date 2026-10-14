@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Conway's Game of Life – 3D Perspective (Fixed)</title>
+<style>
+  /* -------------------------------------------------------
+     Layout & theme
+  ------------------------------------------------------- */
+  body{
+    margin:0;
+    overflow:hidden;
+    font-family:"Helvetica Neue",Helvetica,Arial,sans-serif;
+    display:flex;
+    flex-direction:column;
+    height:100vh;
+    background:#111;
+    color:#eee;
+  }
+  #ui{
+    position:absolute;
+    top:10px; left:10px;
+    background:rgba(0,0,0,0.6);
+    padding:10px;
+    border-radius:6px;
+    display:flex;
+    flex-wrap:wrap;
+    gap:8px;
+    align-items:center;
+    z-index:10;
+  }
+  #ui button{
+    padding:4px 10px;
+    border:none;
+    border-radius:4px;
+    background:#444;
+    color:#fff;
+    cursor:pointer;
+  }
+  #ui button:hover{background:#555;}
+  #ui input[type=range]{width:130px;}
+  #ui label{font-size:0.9em;color:#fff;}
+</style>
+</head>
+<body>
+<div id="ui">
+  <button id="playPause">►</button>
+  <button id="reset">⟲</button>
+  <button id="clear">✖</button>
+
+  <!-- Random pattern button -->
+  <button class="pattern" data-name="random">🔀 Random</button>
+
+  <!-- Density slider (used by Random) -->
+  <label>Density:
+    <input type="range" id="density" min="0" max="100" value="30">
+    <span id="densityVal">30</span>%
+  </label>
+
+  <button class="pattern" data-name="glider">🦋 Glider</button>
+  <button class="pattern" data-name="pulsar">💠 Pulsar</button>
+
+  Speed: <input type="range" id="speed" min="1" max="10" value="5">
+  <span id="speedVal">5</span> gen/s
+</div>
+
+<div id="grid"></div>
+
+<!-- -------------------------------------------------------
+     Three.js – core + OrbitControls (the ONLY correct URLs)
+------------------------------------------------------- -->
+<script type="module">
+/* ==== THREE.JS & ORBIT CONTROLS – use the versioned CDN URLs ==== */
+import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.162.0/build/three.min.js';
+import { OrbitControls } from 'https://cdn.jsdelivr.net/npm/three@0.162.0/examples/js/controls/OrbitControls.js';
+</script>
+
+<script type="module">
+/* ====================== 3‑D Scene Setup ====================== */
+const COLS = 100;               // horizontal cells
+const ROWS = 60;                // vertical cells
+const DEAD = 0;
+const ALIVE = 1;
+const CELL_SIZE = 1;            // world units
+const HEIGHT_DEAD = 0.15;
+const HEIGHT_ALIVE = 0.6;
+const CAMERA_Z = 300;           // distance of the camera from the origin
+
+/* UI elements */
+const playBtn   = document.getElementById('playPause');
+const resetBtn  = document.getElementById('reset');
+const clearBtn  = document.getElementById('clear');
+const densityInp = document.getElementById('density');
+const densityVal = document.getElementById('densityVal');
+const speedInp   = document.getElementById('speed');
+const speedVal   = document.getElementById('speedVal');
+
+let board = [];                 // 2‑D data array (0 = dead, 1 = alive)
+let meshes = [];                // 2‑D array of THREE.Mesh objects
+let running = false;            // paused?
+let frameCounter = 0;           // used for speed‑controlled stepping
+let stepInterval = 1;           // frames between each simulation step
+let renderer, scene, camera, controls;
+
+/* ------------ Initialise Three‑JS -------------------------------- */
+function initThree() {
+  // Renderer
+  renderer = new THREE.WebGLRenderer({ antialias:true });
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  renderer.setClearColor(0x111111);
+  document.body.appendChild(renderer.domElement);
+
+  // Scene
+  scene = new THREE.Scene();
+  scene.add(new THREE.AmbientLight(0x444444, 2));
+  const dirLight = new THREE.DirectionalLight(0xffffff, 1.5);
+  dirLight.position.set(100, 150, 100);
+  scene.add(dirLight);
+
+  // Perspective camera – looks at the origin
+  camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 1, 1000);
+  camera.position.set(0, 0, CAMERA_Z);
+  camera.lookAt(0, 0, 0);
+
+  // OrbitControls – enables mouse‑drag navigation
+  controls = new OrbitControls(camera, renderer.domElement);
+  controls.enableDamping = true;
+  controls.dampingFactor = 0.07;
+  controls.minDistance = 50;
+  controls.maxDistance = 800;
+
+  // Resize handler
+  window.addEventListener('resize', () => {
+    const w = window.innerWidth, h = window.innerHeight;
+    renderer.setSize(w, h);
+    camera.aspect = w / h;
+    camera.updateProjectionMatrix();
+  });
+}
+
+/* ------------ Build the logical board + 3‑D meshes ---------------- */
+function buildBoard() {
+  // ---- data array -------------------------------------------------
+  board = Array.from({length: ROWS}, () => Array(COLS).fill(DEAD));
+
+  // ---- geometry + two materials (dead / alive) --------------------
+  const geometry = new THREE.PlaneGeometry(CELL_SIZE, CELL_SIZE);
+  const matDead = new THREE.MeshStandardMaterial({color: 0x222222, flatShade:true});
+  const matAlive = new THREE.MeshStandardMaterial({color: 0xfffa, flatShade:true});
+
+  // ---- create a mesh for every cell -------------------------------
+  const row = new Array(COLS);
+  for (let r = 0; r < ROWS; r++) {
+    row[r] = new Array(COLS);
+    for (let c = 0; c < COLS; c++) {
+      const mesh = new THREE.Mesh(geometry, matDead.clone());
+      // Position cells in a centred X‑Z grid
+      const x = (c - COLS/2 + 0.5) * CELL_SIZE;
+      const z = (r - ROWS/2 + 0.5) * CELL_SIZE;
+      mesh.position.set(x, 0, z);
+      mesh.userData = {r, c};               // store coordinates for ray‑casting
+      scene.add(mesh);
+      row[r][c] = mesh;
+    }
+  }
+  meshes = row;
+}
+
+/* ------------ Rendering helpers ----------------------------------- */
+function redraw() {
+  const matDead = new THREE.MeshStandardMaterial({color: 0x222222, flatShade:true});
+  const matAlive = new THREE.MeshStandardMaterial({color: 0xfffa, flatShade:true});
+
+  for (let r = 0; r < ROWS; r++) {
+    for (let c = 0; c < COLS; c++) {
+      const mesh = meshes[r][c];
+      const alive = board[r][c] === ALIVE;
+      mesh.material = alive ? matAlive.clone() : matDead.clone();
+      mesh.material.color.set(alive ? 0xfffa : 0x222222);
+      mesh.scale.set(1, alive ? HEIGHT_ALIVE : HEIGHT_DEAD, 1);
+    }
+  }
+}
+
+/* ------------ Interaction – click to toggle a cell --------------- */
+const raycaster = new THREE.Raycaster();
+const pointer = new THREE.Vector2();
+
+function onPointerDown(event) {
+  pointer.x = (event.clientX / window.innerWidth) * 2 - 1;
+  pointer.y = -(event.clientY / window.innerHeight) * 2 + 1;
+  raycaster.setFromCamera(pointer, camera);
+  const intersects = raycaster.intersectObjects(scene.children, false);
+  if (intersects.length === 0) return;
+
+  const cell = intersects[0].object;
+  const {r, c} = cell.userData;
+  // toggle alive/dead
+  board[r][c] = board[r][c] ? DEAD : ALIVE;
+  // update visual representation
+  const alive = board[r][c] === ALIVE;
+  const newMat = alive ? matAlive.clone() : matDead.clone();
+  newMat.color.set(alive ? 0xfffa : 0x222222);
+  cell.material = newMat;
+  cell.scale.set(1, alive ? HEIGHT_ALIVE : HEIGHT_DEAD, 1);
+}
+renderer.domElement.addEventListener('pointerdown', onPointerDown);
+
+/* ------------ Simulation step (Conway) --------------------------- */
+function countNeighbours(r, c) {
+  let n = 0;
+  for (let dr = -1; dr <= 1; dr++) {
+    for (let dc = -1; dc <= 1; dc++) {
+      if (dr === 0 && dc === 0) continue;
+      const nr = (r + dr + ROWS) % ROWS;
+      const nc = (c + dc + COLS) % COLS;
+      n += board[nr][nc];
+    }
+  }
+  return n;
+}
+function step() {
+  const next = board.map((row, r) =>
+    row.map((val, c) => {
+      const neighbours = countNeighbours(r, c);
+      if (val) return (neighbours === 2 || neighbours === 3) ? ALIVE : DEAD;
+      return neighbours === 3 ? ALIVE : DEAD;
+    })
+  );
+  board = next;
+  redraw();
+}
+
+/* ------------ Pattern helpers (glider, pulsar, random) ----------- */
+function applyPattern(name) {
+  // clear board first
+  board.forEach(row => row.fill(DEAD));
+
+  if (name === 'glider') {
+    const startR = Math.floor(ROWS/2 - 1);
+    const startC = Math.floor(COLS/2 - 1);
+    const shape = [
+      [0,1,0],
+      [0,0,1],
+      [1,1,1]
+    ];
+    for (let dr = 0; dr < 3; dr++) {
+      for (let dc = 0; dc < 3; dc++) {
+        if (shape[dr][dc]) board[startR+dr][startC+dc] = ALIVE;
+      }
+    }
+  } else if (name === 'pulsar') {
+    const centreR = Math.floor(ROWS/2);
+    const centreC = Math.floor(COLS/2);
+    for (let dr = -2; dr <= 2; dr++) {
+      for (let dc = -2; dc <= 2; dc++) {
+        if (Math.abs(dr) + Math.abs(dc) === 2) board[centreR+dr][centreC+dc] = ALIVE;
+      }
+    }
+  } else if (name === 'random') {
+    const density = Math.min(100, Math.max(0, parseInt(densityInp.value)));
+    const total = ROWS * COLS;
+    const liveCount = Math.round((density/100) * total);
+    for (let i = 0; i < liveCount; i++) {
+      const idx = Math.floor(Math.random() * total);
+      const r = idx / COLS | 0;
+      const c = idx % COLS;
+      board[r][c] = ALIVE;
+    }
+  }
+  redraw();
+}
+
+/* ------------ UI wiring ------------------------------------------ */
+playBtn.addEventListener('click', () => {
+  running = !running;
+  playBtn.textContent = running ? '⏸' : '►';
+});
+resetBtn.addEventListener('click', () => {
+  running = false;
+  playBtn.textContent = '►';
+  buildBoard();
+  redraw();
+});
+clearBtn.addEventListener('click', () => {
+  board.forEach(row => row.fill(DEAD));
+  redraw();
+});
+document.querySelectorAll('.pattern').forEach(btn => {
+  btn.addEventListener('click', e => {
+    applyPattern(e.target.dataset.name);
+  });
+});
+densityInp.addEventListener('input', () => {
+  densityVal.textContent = densityInp.value;
+});
+speedInp.addEventListener('input', () => {
+  const s = parseInt(speedInp.value);
+  speedVal.textContent = s;
+  // stepInterval = approx. frames between each simulation step.
+  // 60fps ≈ 60 frames per second → frames per step = 60 / speed
+  stepInterval = Math.round(60 / s);
+});
+
+/* ------------ Animation loop – respects speed slider ------------ */
+function animate() {
+  requestAnimationFrame(animate);
+  if (running) {
+    frameCounter++;
+    if (frameCounter >= stepInterval) {
+      step();
+      frameCounter = 0;
+    }
+  }
+  controls.update();          // required when damping is enabled
+  renderer.render(scene, camera);
+}
+
+/* ------------ Bootstrap ------------------------------------------- */
+initThree();
+buildBoard();
+redraw();
+animate();
+</script>
+</body>
+</html>

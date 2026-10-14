@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Conway's Game of Life</title>
+    <style>
+        body {
+            background-color: #202020;
+            color: #ffffff;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin: 0;
+            padding: 20px;
+        }
+
+        h1 {
+            margin-bottom: 10px;
+        }
+
+        .controls {
+            margin-bottom: 20px;
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        button {
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            transition: background-color 0.3s;
+        }
+
+        button:hover {
+            background-color: #45a049;
+        }
+
+        button.stop {
+            background-color: #f44336;
+        }
+        
+        button.stop:hover {
+            background-color: #d32f2f;
+        }
+
+        button.secondary {
+            background-color: #555;
+        }
+
+        button.secondary:hover {
+            background-color: #777;
+        }
+
+        canvas {
+            border: 1px solid #555;
+            background-color: #000;
+            cursor: crosshair;
+            box-shadow: 0 0 20px rgba(0,0,0,0.5);
+        }
+
+        .info {
+            margin-top: 10px;
+            color: #aaa;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Conway's Game of Life</h1>
+
+    <div class="controls">
+        <button id="startBtn">Start</button>
+        <button id="stopBtn" class="stop" disabled>Stop</button>
+        <button id="randomBtn" class="secondary">Randomize</button>
+        <button id="clearBtn" class="secondary">Clear</button>
+    </div>
+
+    <canvas id="gridCanvas"></canvas>
+
+    <div class="info">
+        Click/Drag on the grid to draw cells manually.
+    </div>
+
+    <script>
+        const canvas = document.getElementById('gridCanvas');
+        const ctx = canvas.getContext('2d');
+
+        // Configuration
+        const resolution = 10; // Size of each cell in pixels
+        const width = 800;
+        const height = 600;
+        
+        canvas.width = width;
+        canvas.height = height;
+
+        // Calculate rows and columns
+        const COLS = width / resolution;
+        const ROWS = height / resolution;
+
+        let grid = buildGrid();
+        let animationId = null;
+        let isDrawing = false;
+
+        // --- Grid Logic ---
+
+        // Create a 2D array filled with zeros
+        function buildGrid() {
+            return new Array(COLS).fill(null)
+                .map(() => new Array(ROWS).fill(0));
+        }
+
+        // Randomize the grid state
+        function randomizeGrid() {
+            for (let col = 0; col < COLS; col++) {
+                for (let row = 0; row < ROWS; row++) {
+                    grid[col][row] = Math.random() > 0.85 ? 1 : 0;
+                }
+            }
+            render();
+        }
+
+        // The core Game of Life Algorithm
+        function nextGen() {
+            const nextGrid = buildGrid();
+
+            for (let col = 0; col < COLS; col++) {
+                for (let row = 0; row < ROWS; row++) {
+                    const cell = grid[col][row];
+                    let numNeighbors = 0;
+
+                    // Loop through 3x3 grid around cell
+                    for (let i = -1; i < 2; i++) {
+                        for (let j = -1; j < 2; j++) {
+                            // Avoid counting self
+                            if (i === 0 && j === 0) continue;
+
+                            const x_cell = col + i;
+                            const y_cell = row + j;
+
+                            // Boundary checks (non-wrapping)
+                            if (x_cell >= 0 && x_cell < COLS && y_cell >= 0 && y_cell < ROWS) {
+                                numNeighbors += grid[x_cell][y_cell];
+                            }
+                        }
+                    }
+
+                    // Rules of Life
+                    // 1. Underpopulation: < 2 neighbors -> dies
+                    // 2. Survival: 2 or 3 neighbors -> lives
+                    // 3. Overpopulation: > 3 neighbors -> dies
+                    // 4. Reproduction: exactly 3 neighbors -> born
+                    if (cell === 1 && (numNeighbors < 2 || numNeighbors > 3)) {
+                        nextGrid[col][row] = 0;
+                    } else if (cell === 0 && numNeighbors === 3) {
+                        nextGrid[col][row] = 1;
+                    } else {
+                        nextGrid[col][row] = cell; // Stays the same
+                    }
+                }
+            }
+            grid = nextGrid;
+        }
+
+        // --- Rendering ---
+
+        function render() {
+            // Clear canvas
+            ctx.clearRect(0, 0, width, height);
+
+            for (let col = 0; col < COLS; col++) {
+                for (let row = 0; row < ROWS; row++) {
+                    const cell = grid[col][row];
+
+                    ctx.beginPath();
+                    ctx.rect(col * resolution, row * resolution, resolution, resolution);
+                    
+                    if (cell === 1) {
+                        ctx.fillStyle = '#4CAF50'; // Alive color
+                        ctx.fill();
+                    } 
+                    // Uncomment below to draw grid lines (computationally expensive on large grids)
+                    /*
+                    ctx.strokeStyle = '#202020';
+                    ctx.stroke(); 
+                    */
+                }
+            }
+        }
+
+        function update() {
+            nextGen();
+            render();
+            animationId = requestAnimationFrame(update);
+        }
+
+        // --- Interaction ---
+
+        const startBtn = document.getElementById('startBtn');
+        const stopBtn = document.getElementById('stopBtn');
+        const clearBtn = document.getElementById('clearBtn');
+        const randomBtn = document.getElementById('randomBtn');
+
+        startBtn.addEventListener('click', () => {
+            if (!animationId) {
+                update();
+                startBtn.disabled = true;
+                stopBtn.disabled = false;
+            }
+        });
+
+        stopBtn.addEventListener('click', () => {
+            if (animationId) {
+                cancelAnimationFrame(animationId);
+                animationId = null;
+                startBtn.disabled = false;
+                stopBtn.disabled = true;
+            }
+        });
+
+        clearBtn.addEventListener('click', () => {
+            stopBtn.click();
+            grid = buildGrid();
+            render();
+        });
+
+        randomBtn.addEventListener('click', () => {
+            stopBtn.click();
+            randomizeGrid();
+        });
+
+        // Mouse Drawing Logic
+        function getCursorPosition(canvas, event) {
+            const rect = canvas.getBoundingClientRect();
+            const x = event.clientX - rect.left;
+            const y = event.clientY - rect.top;
+            return { x, y };
+        }
+
+        function toggleCell(event) {
+            const { x, y } = getCursorPosition(canvas, event);
+            const col = Math.floor(x / resolution);
+            const row = Math.floor(y / resolution);
+
+            if (col >= 0 && col < COLS && row >= 0 && row < ROWS) {
+                grid[col][row] = 1; // Draw alive cells
+                render();
+            }
+        }
+
+        canvas.addEventListener('mousedown', (e) => {
+            isDrawing = true;
+            toggleCell(e);
+        });
+
+        canvas.addEventListener('mousemove', (e) => {
+            if (isDrawing) toggleCell(e);
+        });
+
+        window.addEventListener('mouseup', () => {
+            isDrawing = false;
+        });
+
+        // --- Initialization ---
+        // Start with a random board or empty? Let's do random for effect.
+        randomizeGrid();
+
+    </script>
+</body>
+</html>
