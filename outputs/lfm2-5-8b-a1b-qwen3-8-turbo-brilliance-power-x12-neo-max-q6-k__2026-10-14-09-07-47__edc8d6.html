@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Conway's Game of Life</title>
+  <style>
+    body { margin:0; display:flex; justify-content:center; align-items:center; height:100vh; background:#111; color:#eee; font-family:sans-serif; }
+    canvas { border:1px solid #444; }
+  </style>
+</head>
+<body>
+  <canvas id="gameCanvas" width="256" height="256"></canvas>
+
+  <script type="module">
+    const config = {
+      rows: 64,
+      cols: 64,
+      speed: 30, // frames per second
+      cellSize: 8 // pixels per cell
+    };
+    let board;
+    let nextBoard;
+
+    function init() {
+      const width = config.cols * config.cellSize;
+      const height = config.rows * config.cellSize;
+      document.getElementById('canvas').width = width;
+      document.getElementById('canvas').height = height;
+      board = Array.from({ length: config.rows }, () => 
+        Array(config.cols).fill(0)
+      );
+    }
+
+    function step() {
+      for (let r = 0; r < config.rows; r++) {
+        for (let c = 0; c < config.cols; c++) {
+          const idx = r * config.cols + c;
+          let liveNeighbors = 0;
+
+          // count neighbors
+          for (const dr of [-1, 0, 1]) {
+            for (const dc of [-1, 0, 1]) {
+              if (dr === 0 && dc === 0) continue;
+              const nr = r + dr;
+              const nc = c + dc;
+              if (nr >= 0 && nr < config.rows && nc >= 0 && nc < config.cols) {
+                liveNeighbors += board[nr][nc];
+              }
+            }
+          }
+
+          // apply Conway's rules
+          nextBoard[idx] = (board[idx] === 1 ? 
+            ((liveNeighbors === 2 || liveNeighbors === 3) ? 1 : 0) :
+            (liveNeighbors === 3 ? 1 : 0);
+        }
+      }
+
+      // swap boards
+      board, nextBoard = nextBoard, board;
+    }
+
+    function draw() {
+      const ctx = document.getElementById('canvas').getContext('2d');
+      for (let r = 0; r < config.rows; r++) {
+        for (let c = 0; c < config.cols; c++) {
+          ctx.fillStyle = board[r][c] ? '#fff' : '#000';
+          ctx.fillRect(c * config.cellSize, r * config.cellSize, config.cellSize, config.cellSize);
+        }
+      }
+    }
+
+    function animate() {
+      step();
+      draw();
+      requestAnimationFrame(animate);
+    }
+
+    init();
+    animate();
+
+    // optional speed control
+    const speedSlider = document.createElement('div');
+    speedSlider.innerHTML = `<label>Speed: ${config.speed} fps</label>`;
+    speedSlider.style.position = 'absolute';
+    speedSlider.style.top = '10px';
+    speedSlider.style.left = '10px';
+    document.body.appendChild(speedSlider);
+  </script>
+</body>
+</html>

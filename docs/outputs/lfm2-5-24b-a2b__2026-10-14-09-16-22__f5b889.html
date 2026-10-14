@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Conway's Game of Life</title>
+<style>
+  body {
+    font-family: Arial, sans-serif;
+    background-color: #1a1a1a;
+    color: #eee;
+    text-align: center;
+    margin: 0;
+    padding: 20px;
+  }
+  h1 { margin-bottom: 10px; }
+  canvas {
+    border: 2px solid #444;
+    background-color: #000;
+  }
+  .controls {
+    margin-top: 15px;
+  }
+  button {
+    padding: 6px 12px;
+    margin: 4px;
+    font-size: 14px;
+    cursor: pointer;
+    border: none;
+    border-radius: 3px;
+    background-color: #333;
+    color: white;
+  }
+  button:hover { background-color: #555; }
+  #startBtn { background-color: #2e7d32; }
+  #stepBtn { background-color: #f9a825; }
+  #clearBtn { background-color: #c62828; }
+  #randomBtn { background-color: #1565c0; }
+</style>
+</head>
+<body>
+<h1>Conway's Game of Life</h1>
+<canvas id="life"></canvas>
+<div class="controls">
+  <button id="startBtn">Start</button>
+  <button id="stepBtn">Step</button>
+  <button id="clearBtn">Clear</button>
+  <button id="randomBtn">Randomize</button>
+  <span style="margin-left:20px;">Generation: <strong id="gen">0</strong></span>
+</div>
+<script>
+(function() {
+    const canvas = document.getElementById('life');
+    const ctx = canvas.getContext('2d');
+
+    const COLS = 60;
+    const ROWS = 40;
+    const CELL_SIZE = 10;
+
+    canvas.width = COLS * CELL_SIZE;
+    canvas.height = ROWS * CELL_SIZE;
+
+    let grid = [];
+    let generation = 0;
+    let isRunning = false;
+    let intervalId = null;
+
+    function initPatterns() {
+        // Reset to empty
+        grid = Array.from({ length: ROWS }, () => Array(COLS).fill(false));
+        // Glider at (5, 5)
+        grid[5][5] = true;
+        grid[6][6] = true;
+        grid[7][5] = true;
+        grid[7][6] = true;
+        grid[7][7] = true;
+        // Blinker vertical at (30, 20)
+        grid[29][20] = true;
+        grid[30][20] = true;
+        grid[31][20] = true;
+    }
+
+    function randomGrid() {
+        for (let r = 0; r < ROWS; r++) {
+            for (let c = 0; c < COLS; c++) {
+                grid[r][c] = Math.random() < 0.3;
+            }
+        }
+    }
+
+    function countNeighbors(r, c) {
+        let count = 0;
+        for (let dr = -1; dr <= 1; dr++) {
+            for (let dc = -1; dc <= 1; dc++) {
+                if (dr === 0 && dc === 0) continue;
+                const nr = r + dr;
+                const nc = c + dc;
+                // Toroidal wrap
+                const wrapR = ((nr % ROWS) + ROWS) % ROWS;
+                const wrapC = ((nc % COLS) + COLS) % COLS;
+                if (grid[wrapR][wrapC]) {
+                    count++;
+                }
+            }
+        }
+        return count;
+    }
+
+    function nextState() {
+        let newGrid = Array.from({ length: ROWS }, () => Array(COLS).fill(false));
+        for (let r = 0; r < ROWS; r++) {
+            for (let c = 0; c < COLS; c++) {
+                const neighbors = countNeighbors(r, c);
+                if (grid[r][c]) {
+                    newGrid[r][c] = (neighbors === 2 || neighbors === 3);
+                } else {
+                    newGrid[r][c] = (neighbors === 3);
+                }
+            }
+        }
+        grid = newGrid;
+    }
+
+    function render() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        for (let r = 0; r < ROWS; r++) {
+            for (let c = 0; c < COLS; c++) {
+                if (grid[r][c]) {
+                    ctx.fillStyle = '#00ff00';
+                    ctx.fillRect(c * CELL_SIZE, r * CELL_SIZE, CELL_SIZE - 1, CELL_SIZE - 1);
+                }
+            }
+        }
+        document.getElementById('gen').textContent = generation;
+    }
+
+    function step() {
+        nextState();
+        generation++;
+        render();
+    }
+
+    function startRunning() {
+        if (isRunning) return;
+        isRunning = true;
+        document.getElementById('startBtn').textContent = 'Pause';
+        intervalId = setInterval(() => {
+            step();
+        }, 100);
+    }
+
+    function pauseRunning() {
+        isRunning = false;
+        clearInterval(intervalId);
+        intervalId = null;
+        document.getElementById('startBtn').textContent = 'Start';
+    }
+
+    function clearGrid() {
+        grid = Array.from({ length: ROWS }, () => Array(COLS).fill(false));
+        generation = 0;
+        render();
+    }
+
+    function randomSeed() {
+        randomGrid();
+        generation = 0;
+        render();
+    }
+
+    document.getElementById('startBtn').addEventListener('click', () => {
+        if (isRunning) pauseRunning();
+        else startRunning();
+    });
+
+    document.getElementById('stepBtn').addEventListener('click', step);
+
+    document.getElementById('clearBtn').addEventListener('click', clearGrid);
+
+    document.getElementById('randomBtn').addEventListener('click', randomSeed);
+
+    // Initial setup
+    initPatterns();
+    generation = 0;
+    render();
+})();
+</script>
+</body>
+</html>

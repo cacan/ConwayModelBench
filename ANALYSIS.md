@@ -2,6 +2,28 @@
 
 > Curated from manually reading ~10 of the 59 historical outputs. Not auto-generated.
 
+## Test dates are not reported
+
+No original per-model test dates exist. The 59 historical outputs were bulk-imported: every manifest entry shares one identical timestamp to the millisecond, and every `outputs/*.html` shares one identical file mtime to the second (`2026-08-25 13:35:13`, written five seconds before the git index). Both are import stamps, not run times. Only runs executed directly by `scripts/bench_model.py` carry a real timestamp, which is not enough to justify a date column that would imply precision the historical batch does not have.
+
+## How the quality score works
+
+`scripts/report.js` computes a static, heuristic score out of 100 per output, shown as a bar on the dashboard and as a `Score` column in `REPORT.md`.
+
+| Dimension | Weight | What it checks |
+|---|---|---|
+| Rule correctness | 30 | birth rule, survival rule, 8-neighbour scan, double-buffered next state |
+| Feature completeness | 25 | toroidal wrap, 3+ named patterns, keyboard, pointer editing, speed control, counters, randomize, responsive |
+| Rendering & loop profile | 20 | canvas/WebGL, `requestAnimationFrame`, no per-step DOM rebuild, clean stop |
+| Code hygiene | 15 | comments, `const`/`let`, no `eval`, structured functions, single stylesheet, no inline handlers |
+| Visual polish | 10 | stylesheet, themed colours, viewport meta, labelled controls, title |
+
+Grades: **A** ≥ 85, **B** ≥ 70, **C** ≥ 55, **D** ≥ 40, **F** below 40.
+
+**What validates it.** The score puts `glm-47-flash` (98) and `kat-coder-25-dev` (93) at the top and `taalas-asic-v1` (38) at the bottom, which matches the manual findings below. Building it surfaced two false negatives — the `neighbors < 2 || neighbors > 3` complement form of the survival rule, and nested neighbour loops written as `< 2` rather than `<= 1` — both of which had been marking working implementations as incorrect. They are fixed.
+
+**Limits.** It is static, so it cannot execute the code. This matters: `devstral-small-2-24b-instruct-2512-wow` scores 90, while the manual review found a dead drag-paint handler and a duplicate stylesheet — real defects the rubric cannot see. Treat the score as a triage ranking, not a verdict, and read the per-model notes below for anything in the A band.
+
 ## Three architectural schools
 
 | Approach | What it does | Used by | Performance |
@@ -31,8 +53,10 @@ Every "best" 2D implementation uses Canvas 2D. DOM grids cap out around 50×50 b
 
 ## ❌ Notable failure modes
 
-### 🪦 `oblaci-polja-nemotron-3-nano.html` — **Doesn't even attempt Conway**
+### 🪦 `oblaci-polja-nemotron-3-nano` — **Doesn't even attempt Conway** *(removed from the dataset)*
 33 lines. Pure SVG of clouds, sun, mountains, river — in Croatian. The 3-nano model apparently interpreted the prompt as a static landscape image. Total hallucination.
+
+Both Nemotron 3 Nano runs (the plain one and the 3D variant) were dropped from the dataset on 2026-10-14: neither attempted Conway, so they are not comparable results. The outputs and screenshots are deleted; this note is kept as the record of why.
 
 ### 🪦 `ConwayGameofLife_Taalas_ASIC_v1.html` — **Architecturally broken (132 lines)**
 - CSS grid configured for **10×10 cells** but the script creates a **50×50 grid**.

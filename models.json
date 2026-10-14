@@ -3,7 +3,7 @@
   "endpoint": "http://192.168.31.13:1234/v1",
   "defaultParams": {
     "temperature": 0.2,
-    "max_tokens": 8000,
+    "max_tokens": 65536,
     "stream": false
   },
   "systemPrompt": "You are an expert web developer who writes clean, correct, production-quality JavaScript. You always output complete, runnable code with no commentary outside code fences.",
@@ -24,8 +24,6 @@
     { "id": "devstral-small-2-24b-instruct-2512",     "displayName": "Devstral Small 2 24B Instruct 2512", "tags": ["devstral"] },
     { "id": "devstral-small-2-24b-instruct-2512-wow", "displayName": "Devstral Small 2 24B Instruct 2512 Wow", "tags": ["devstral"] },
     { "id": "nemotron-3-nano",                        "displayName": "Nemotron 3 Nano",            "tags": ["nvidia", "small", "historical"] },
-    { "id": "oblaci-polja-nemotron-3-nano",           "displayName": "Oblaci Polja Nemotron 3 Nano", "tags": ["nvidia", "small", "svg"] },
-    { "id": "oblaci-polja-nemotron-3-nano-3d",        "displayName": "Oblaci Polja Nemotron 3 Nano 3D", "tags": ["nvidia", "small", "svg"] },
     { "id": "qwen3-coder-30b-moe-6-1024ingestion",    "displayName": "Qwen3 Coder 30B MoE-6 1024 Ingestion", "tags": ["qwen", "moe"] },
     { "id": "qwen3-next",                             "displayName": "Qwen3 Next",                 "tags": ["qwen"] },
     { "id": "qwen3-next-v2",                          "displayName": "Qwen3 Next v2",              "tags": ["qwen"] },
@@ -66,6 +64,8 @@
     { "id": "qwen3-6-35b-a3b-mtp-3d",                 "displayName": "Qwen3.6 35B A3B MTP 3D",     "tags": ["qwen", "moe", "mtp", "3d"] },
     { "id": "orinth-1-0-95",                          "displayName": "Orinth 1.0 95",              "tags": ["orinth"] },
     { "id": "kat-coder-25-dev",                       "displayName": "Kat Coder 2.5 Dev",          "tags": ["kat"] },
-    { "id": "qwen3-8-27b-q8",                         "displayName": "Qwen3.8 27B Q8",             "tags": ["qwen"] }
+    { "id": "qwen3-8-27b-q8",                         "displayName": "Qwen3.8 27B Q8",             "tags": ["qwen"] },
+    { "id": "lfm2.5-24b-a2b",                             "displayName": "LFM 2.5 24B A2B",                                                                  "tags": ["lfm"] },
+    { "id": "lfm2.5-8b-a1b-qwen3.8-turbo-brilliance-power-x12-neo-max@q6_k", "displayName": "Lfm2.5 8B A1B Qwen3.8 Turbo Brilliance Power X12 Neo Max@Q6_K",                    "tags": [] }
   ]
 }

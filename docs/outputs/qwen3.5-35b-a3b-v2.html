@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Neon Game of Life</title>
+    <style>
+        :root {
+            --bg-color: #0d1117;
+            --panel-bg: rgba(30, 41, 59, 0.8);
+            --accent-color: #00ffcc; /* Neon Cyan */
+            --text-color: #e6edf3;
+            --grid-line: #21262d;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            font-family: 'Courier New', Courier, monospace; /* Retro coding feel */
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+            overflow: hidden;
+        }
+
+        h1 {
+            font-size: 2rem;
+            text-transform: uppercase;
+            letter-spacing: 4px;
+            color: var(--accent-color);
+            text-shadow: 0 0 10px rgba(0, 255, 204, 0.5);
+            margin-bottom: 10px;
+        }
+
+        .container {
+            position: relative;
+            box-shadow: 0 0 30px rgba(0,0,0,0.8);
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        canvas {
+            background-color: #161b22;
+            display: block;
+            cursor: crosshair;
+            /* Subtle grid pattern via CSS */
+            background-image: 
+                linear-gradient(var(--grid-line) 1px, transparent 1px),
+                linear-gradient(90deg, var(--grid-line) 1px, transparent 1px);
+            background-size: 20px 20px; 
+        }
+
+        .ui-panel {
+            margin-top: 20px;
+            padding: 15px 25px;
+            background-color: var(--panel-bg);
+            backdrop-filter: blur(5px);
+            border-radius: 8px;
+            display: flex;
+            gap: 15px;
+            align-items: center;
+            border: 1px solid #30363d;
+        }
+
+        button {
+            background-color: transparent;
+            color: var(--accent-color);
+            border: 1px solid var(--accent-color);
+            padding: 8px 20px;
+            font-family: inherit;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            text-transform: uppercase;
+            font-size: 0.8rem;
+        }
+
+        button:hover {
+            background-color: var(--accent-color);
+            color: #0d1117;
+            box-shadow: 0 0 15px rgba(0, 255, 204, 0.6);
+        }
+
+        button.secondary {
+            border-color: #8b949e;
+            color: #8b949e;
+        }
+
+        button.secondary:hover {
+            background-color: #8b949e;
+            box-shadow: 0 0 15px rgba(139, 148, 158, 0.6);
+        }
+
+        .stats {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            font-size: 0.8rem;
+            color: rgba(230, 237, 243, 0.5);
+            pointer-events: none;
+        }
+
+        .slider-container {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 0.8rem;
+            color: #8b949e;
+        }
+        
+        input[type=range] {
+            accent-color: var(--accent-color);
+            cursor: pointer;
+        }
+
+    </style>
+</head>
+<body>
+
+    <h1>Game of Life</h1>
+
+    <div class="container">
+        <canvas id="gridCanvas"></canvas>
+        <div class="stats" id="statsDisplay">Generation: 0</div>
+    </div>
+
+    <div class="ui-panel">
+        <button id="btn-start">Start / Play</button>
+        <button id="btn-pause" style="display:none;">Pause</button>
+        <button id="btn-random" class="secondary">Randomize</button>
+        <button id="btn-clear" class="secondary">Clear</button>
+        
+        <div class="slider-container">
+            <span>Speed:</span>
+            <input type="range" id="speed" min="10" max="200" value="50">
+        </div>
+    </div>
+
+    <script>
+        // --- Setup & Configuration ---
+        const canvas = document.getElementById('gridCanvas');
+        const ctx = canvas.getContext('2d');
+        const resolution = 15; // Size of cells
+        
+        let cols, rows;
+        let grid = [];
+        let animationId;
+        let isRunning = false;
+        let generationCount = 0;
+        
+        // Speed control (milliseconds per frame)
+        let updateInterval = 50; 
+        let timerId = null;
+
+        // DOM Elements
+        const btnStart = document.getElementById('btn-start');
+        const btnPause = document.getElementById('btn-pause');
+        const btnRandom = document.getElementById('btn-random');
+        const btnClear = document.getElementById('btn-clear');
+        const speedInput = document.getElementById('speed');
+        const statsDisplay = document.getElementById('statsDisplay');
+
+        // --- Initialization ---
+
+        function resize() {
+            // Fit canvas to window, leaving room for header/footer
+            const maxWidth = window.innerWidth - 40;
+            const maxHeight = window.innerHeight - 160; // Approximate footer height
+
+            canvas.width = Math.floor(maxWidth / resolution) * resolution;
+            canvas.height = Math.floor(maxHeight / resolution) * resolution;
+
+            cols = canvas.width / resolution;
+            rows = canvas.height / resolution;
+
+            if (grid.length === 0 || grid[0].length !== cols || grid.length !== rows) {
+                // Only reset grid if dimensions changed drastically or it's the first load
+                initGrid(); 
+            } else {
+                // If resizing, we keep data but need to handle wrapping logic carefully
+                // For simplicity in this demo, we just redraw.
+                draw();
+            }
+        }
+
+        function initGrid() {
+            grid = new Array(cols).fill(null)
+                .map(() => new Array(rows).fill(0));
+            randomizeGrid();
+            generationCount = 0;
+            statsDisplay.innerText = `Generation: ${generationCount}`;
+            draw();
+        }
+
+        function randomizeGrid() {
+            for (let col = 0; col < cols; col++) {
+                for (let row = 0; row < rows; row++) {
+                    grid[col][row] = Math.random() > 0.85 ? 1 : 0; // 15% density
+                }
+            }
+        }
+
+        function clearGrid() {
+            grid = new Array(cols).fill(null)
+                .map(() => new Array(rows).fill(0));
+            generationCount = 0;
+            statsDisplay.innerText = `Generation: ${generationCount}`;
+            draw();
+        }
+
+        // --- Drawing Logic (The "Juice") ---
+
+        function draw() {
+            // Clear background with a slight trail effect? No, let's keep it clean.
+            ctx.fillStyle = '#161b22'; 
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            for (let col = 0; col < cols; col++) {
+                for (let row = 0; row < rows; row++) {
+                    const cell = grid[col][row];
+                    
+                    if (cell === 1) {
+                        // Neon Glow Effect
+                        ctx.shadowBlur = 8;
+                        ctx.shadowColor = '#00ffcc';
+                        ctx.fillStyle = '#ffffff'; // Center is white for intensity
+                        
+                        ctx.fillRect(
+                            col * resolution + 1, 
+                            row * resolution + 1, 
+                            resolution - 2, 
+                            resolution - 2
+                        );
+
+                        // Reset shadow for performance/other elements
+                        ctx.shadowBlur = 0;
+                    }
+                }
+            }
+        }
+
+        // --- Game Logic ---
+
+        function update() {
+            const nextGrid = new Array(cols).fill(null)
+                .map(() => new Array(rows).fill(0));
+
+            for (let col = 0; col < cols; col++) {
+                for (let row = 0; row < rows; row++) {
+                    const cell = grid[col][row];
+                    let numNeighbors = 0;
+
+                    // Check neighbors with wrapping edges (Toroidal)
+                    for (let i = -1; i < 2; i++) {
+                        for (let j = -1; j < 2; j++) {
+                            if (i === 0 && j === 0) continue;
+
+                            const x_cell = col + i;
+                            const y_cell = row + j;
+
+                            // Wrap around logic
+                            let targetCol = (x_cell + cols) % cols;
+                            let targetRow = (y_cell + rows) % rows;
+
+                            numNeighbors += grid[targetCol][targetRow];
+                        }
+                    }
+
+                    // Rules of Life
+                    if (cell === 1 && numNeighbors < 2) {
+                        nextGrid[col][row] = 0;
+                    } else if (cell === 1 && numNeighbors > 3) {
+                        nextGrid[col][row] = 0;
+                    } else if (cell === 0 && numNeighbors === 3) {
+                        nextGrid[col][row] = 1;
+                    } else {
+                        nextGrid[col][row] = cell;
+                    }
+                }
+            }
+
+            grid = nextGrid;
+            generationCount++;
+            statsDisplay.innerText = `Generation: ${generationCount}`;
+            draw();
+        }
+
+        function gameLoop() {
+            if (isRunning) {
+                update();
+                // Use setTimeout for the loop to handle variable speed easily
+                timerId = setTimeout(() => {
+                    requestAnimationFrame(gameLoop);
+                }, 255 - speedInput.value); 
+            }
+        }
+
+        function toggleGame() {
+            isRunning = !isRunning;
+            
+            if (isRunning) {
+                btnStart.style.display = 'none';
+                btnPause.style.display = 'inline-block';
+                
+                // Cancel any pending timeouts to prevent double execution
+                clearTimeout(timerId);
+                requestAnimationFrame(gameLoop);
+            } else {
+                btnStart.style.display = 'inline-block';
+                btnPause.style.display = 'none';
+                clearTimeout(timerId);
+            }
+        }
+
+        // --- Event Listeners ---
+
+        window.addEventListener('resize', resize);
+
+        canvas.addEventListener('mousedown', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+
+            const col = Math.floor(x / resolution);
+            const row = Math.floor(y / resolution);
+
+            if (col >= 0 && col < cols && row >= 0 && row < rows) {
+                grid[col][row] = 1; // Clicking always sets to alive
+                draw();
+            }
+        });
+
+        btnStart.addEventListener('click', toggleGame);
+        btnPause.addEventListener('click', toggleGame);
+        
+        btnRandom.addEventListener('click', () => {
+            randomizeGrid();
+            generationCount = 0;
+            statsDisplay.innerText = `Generation: ${generationCount}`;
+            draw();
+        });
+
+        btnClear.addEventListener('click', () => {
+            isRunning = false;
+            toggleGame(); // Reset UI buttons
+            clearGrid();
+        });
+
+        speedInput.addEventListener('input', (e) => {
+            updateInterval = 255 - e.target.value;
+        });
+
+        // --- Start Up ---
+        resize();
+
+    </script>
+</body>
+</html>

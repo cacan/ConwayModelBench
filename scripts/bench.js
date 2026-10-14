@@ -56,9 +56,25 @@ function shortHash(s, n = 6) {
 function extractHtml(text) {
     if (!text) return null;
 
-    // 1. ```html ... ``` fence
-    const fenced = text.match(/```(?:html)?\s*\n([\s\S]*?)```/i);
-    if (fenced) return fenced[1].trim();
+    const looksLikeHtml = (s) => /<html[\s>]/i.test(s) || /<!doctype\s+html/i.test(s);
+
+    // 1. Fenced blocks. Models often emit prose plus several fences, and the
+    //    first fence is not necessarily the page. Prefer the fence that is a
+    //    full HTML document; otherwise stitch every fence together, since
+    //    markup and script are sometimes split across separate blocks.
+    const fences = [...text.matchAll(/```([^\n`]*)\n([\s\S]*?)```/g)];
+    if (fences.length) {
+        const htmlFence = fences.find((m) => looksLikeHtml(m[2]));
+        const stitched = fences.map((m) => m[2].trim()).filter(Boolean).join('\n');
+        if (htmlFence) {
+            const candidate = htmlFence[2].trim();
+            if (/<\/html>/i.test(candidate)) return candidate;
+            if (/<\/html>/i.test(stitched)) return stitched;
+            return candidate;
+        }
+        if (looksLikeHtml(stitched)) return stitched;
+        return fences[0][2].trim();
+    }
 
     // 2. <!DOCTYPE html ... </html>
     const docMatch = text.match(/(<!DOCTYPE[\s\S]*?<html[\s\S]*?<\/html>)/i);

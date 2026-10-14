@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Conway's Game of Life</title>
+    <style>
+        :root {
+            --bg-color: #1a1a1a;
+            --panel-color: #2d2d2d;
+            --accent-color: #4caf50;
+            --text-color: #e0e0e0;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify_up: center;
+            justify-content: center;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        .controls {
+            background-color: var(--panel-color);
+            padding: 15px 25px;
+            border-radius: 10px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+            margin-bottom: 20px;
+            display: flex;
+            gap: 15px;
+            align-items: center;
+        }
+
+        canvas {
+            border: 2px solid #444;
+            background-color: #000;
+            box-shadow: 0 0 20px rgba(0,0,0,0.5);
+            cursor: crosshair;
+        }
+
+        button {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 5px;
+            background-color: #444;
+            color: white;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        button:hover {
+            background-color: #666;
+        }
+
+        button.primary {
+            background-color: var(--accent-color);
+        }
+
+        button.primary:hover {
+            background-color: #45a049;
+        }
+
+        .stats {
+            margin-top: 10px;
+            font-size: 0.9rem;
+            opacity: 0.8;
+        }
+
+        .instructions {
+            margin-top: 15px;
+            font-size: 0.8rem;
+            color: #888;
+        }
+
+        .divider {
+            border-left: 1px solid #555;
+            height: 25px;
+            margin: 0 5px;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="controls">
+        <button id="startBtn" class="primary">Start</button>
+        <button id="randomBtn">Randomize</button>
+        <button id="clearBtn">Clear</button>
+        <div class="divider"></div>
+        <label for="speedRange">Speed</label>
+        <input type="range" id="speedRange" min="1" max="60" value="30">
+    </div>
+
+    <canvas id="gameCanvas"></canvas>
+
+    <div class="stats" id="stats">Generation: 0</div>
+
+    <div class="instructions">
+        Click or drag on the canvas to toggle cells • Wrap-around world enabled
+    </div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d'); // FIXED: Was getContect
+        const startBtn = document.getElementById('startBtn');
+        const randomBtn = document.getElementById('randomBtn');
+        const clearBtn = document.getElementById('clearBtn');
+        const speedRange = document.getElementById('speedRange');
+        const statsDisplay = document.getElementById('stats');
+
+        // Configuration
+        const resolution = 10; 
+        canvas.width = 800;
+        canvas.height = 600;
+        const COLS = canvas.width / resolution;
+        const ROWS = canvas.height / resolution;
+
+        let grid = createGrid();
+        let isRunning = false;
+        let generation = 0;
+        let animationId = null;
+        let lastTime = 0;
+
+        function createGrid() {
+            return Array.from({ length: COLS }, () => Array(ROWS).fill(0));
+        }
+
+        function randomizeGrid() {
+            for (let col = 0; col < COLS; col++) {
+                for (let row = 0; row < ROWS; row++) {
+                    grid[col][row] = Math.random() > 0.85 ? 1 : 0;
+                }
+            }
+            generation = 0;
+            updateStats();
+            draw();
+        }
+
+        function updateStats() {
+            statsDisplay.textContent = `Generation: ${generation}`;
+        }
+
+        function nextGeneration() {
+            const nextGrid = createGrid();
+
+            for (let col = 0; col < COLS; col++) {
+                for (let row = 0; row < ROWS; row++) {
+                    const neighbors = countNeighbors(col, row);
+                    const currentState = grid[col][row];
+
+                    if (currentState === 1 && (neighbors < 2 || neighbors > 3)) {
+                        nextGrid[col][row] = 0;
+                    } 
+                    else if (currentState === 0 && neighbors === 3) {
+                        nextGrid[col][row] = 1;
+                    } 
+                    else {
+                        nextGrid[col][row] = currentState;
+                    }
+                }
+            }
+            grid = nextGrid;
+            generation++;
+            updateStats();
+        }
+
+        function countNeighbors(col, row) {
+            let sum = 0;
+            for (let i = -1; i < 2; i++) {
+                for (let j = -1; j < 2; j++) {
+                    if (i === 0 && j === 0) continue;
+
+                    const x = (col + i + COLS) % COLS;
+                    const y = (row + j + ROWS) % ROWS;
+                    sum += grid[x][y];
+                }
+            }
+            return sum;
+        }
+
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            for (let col = 0; col < COLS; col++) {
+                for (let row = 0; row < ROWS; row++) {
+                    if (grid[col][row]) {
+                        ctx.fillStyle = '#4caf50';
+                        ctx.fillRect(col * resolution, row * resolution, resolution - 1, resolution - 1);
+                    }
+                }
+            }
+        }
+
+        function gameLoop(timestamp) {
+            // Calculate delay based on speed slider (higher value = faster/less delay)
+            const speed = 1000 / speedRange.value; 
+
+            if (timestamp - lastTime > speed) {
+                nextGeneration();
+                draw();
+                lastTime = timestamp;
+            }
+
+            animationId = requestAnimationFrame(gameLoop);
+        }
+
+        function handleInteraction(e) {
+            const rect = canvas.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+            const col = Math.floor(x / resolution);
+            const row = Math.floor(y / resolution);
+
+            if (col >= 0 && col < COLS && row >= 0 && row < ROWS) {
+                grid[col][row] = grid[col][row] ? 0 : 1;
+                draw();
+            }
+        }
+
+        // Event Listeners
+        startBtn.addEventListener('click', () => {
+            isRunning = !isRunning;
+            startBtn.textContent = isRunning ? 'Stop' : 'Start';
+            startBtn.classList.toggle('primary');
+            if (isRunning) {
+                lastTime = performance.now();
+                animationId = requestAnimationFrame(gameLoop);
+            } else {
+                cancelAnimationFrame(animationId);
+            }
+        });
+
+        randomBtn.addEventListener('click', randomizeGrid);
+
+        clearBtn.addEventListener('click', () => {
+            grid = createGrid();
+            generation = 0;
+            updateStats();
+            draw();
+        });
+
+        canvas.addEventListener('mousedown', (e) => {
+            handleInteraction(e);
+            canvas.addEventListener('mousemove', handleInteraction);
+        });
+
+        window.addEventListener('mouseup', () => {
+            canvas.removeEventListener('mousemove', handleInteraction);
+        });
+
+        // Initial Setup
+        randomizeGrid();
+    </script>
+</body>
+</html>

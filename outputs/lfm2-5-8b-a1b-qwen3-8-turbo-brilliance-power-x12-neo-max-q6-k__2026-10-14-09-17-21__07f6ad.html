@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Conway Game of Life</title>
+<style>
+  body {font-family:Arial,sans-serif; text-align:center; margin-top:20px;}
+  canvas {border:1px solid #333; display:block; margin:0 auto;}
+  button {margin-top:10px;}
+</style>
+</head>
+<body>
+<h1>Conway's Game of Life</h1>
+<button id="startBtn">Start</button>
+<canvas id="lifeCanvas"></canvas>
+
+<script>
+const config = {
+  width: 256,
+  height: 128,
+  cellSize: 8,
+  gridLines: true
+};
+
+let grid, size;
+
+function init() {
+  const canvas = document.getElementById('lifeCanvas');
+  const ctx = canvas.getContext('2d');
+  grid = [];
+  for (let y = 0; y < config.height; y++) {
+    let row = [true]; // start with all alive
+    for (let x = 0; x < config.width; x++) row.push(true);
+    grid.push(row);
+  }
+  canvas.width = config.width;
+  canvas.height = config.height * config.cellSize;
+}
+
+function draw() {
+  const ctx = canvas.getContext('2d');
+  if (!grid) return;
+  for (let y = 0; y < config.height; y++) {
+    for (let x = 0; x < config.width; x++) {
+      ctx.fillStyle = grid[y][x] ? '#000' : 'white';
+      ctx.fillRect(x * config.cellSize, y * config.cellSize, config.cellSize, config.cellSize);
+    }
+  if (config.gridLines) {
+    const { width: w, height: h } = canvas;
+    for (let x = 0; x < w; x += config.cellSize) {
+      ctx.strokeStyle = '#333';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(x, 0);
+      for (let y = h; y > 0; y--) ctx.lineTo(x, y);
+      ctx.stroke();
+    }
+  }
+}
+
+function step() {
+  const n = grid.length;
+  let newGrid = [];
+  for (let y = 0; y < n; y++) {
+    let row = [];
+    for (let x = 0; x < n; x++) {
+      let alive = 0;
+      for (let dy = -1; dy <= 1; dy++) {
+        for (let dx = -1; dx <= 1; dx++) {
+          if (dx === 0 && dy === 0) continue;
+          const nx = x + dx, ny = y + dy;
+          if (
+            nx >= 0 &&
+            nx < config.width &&
+            ny >= 0 &&
+            ny < config.height &&
+            grid[ny][nx]
+          )
+            alive++;
+        }
+      }
+      row.push((grid[y][x] === 1) ? (alive % 2 === 0) : false);
+    }
+    newGrid.push(row);
+  }
+  [grid, ...newGrid].forEach(r => r.forEach(c => c ? 1 : 0));
+}
+
+function toggle() {
+  if (!grid) return;
+  grid = init();
+  document.getElementById('startBtn').textContent = 'Pause';
+  requestAnimationFrame(loop);
+}
+
+let paused = false;
+init();
+
+document.getElementById('startBtn').addEventListener('click', toggle);
+
+const loop = () => {
+  if (paused) return;
+  step();
+  draw();
+  paused = !paused;
+};
+</script>
+</body>
+</html>

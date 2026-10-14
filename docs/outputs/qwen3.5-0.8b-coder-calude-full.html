@@ -1,0 +1,447 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <title>Conway Game of Life</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            margin-top: 2rem;
+            background-color: #1a1a1a;
+            color: white;
+        }
+
+        body p {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            font-size: 1.5rem;
+            margin-bottom: 2rem;
+            text-align: center;
+        }
+
+        .game-container {
+            position: relative;
+            width: 600px;
+            height: 400px;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 15px 30px rgba(0, 0, 0, 0.3);
+        }
+
+        .grid {
+            position: absolute;
+            top: 25%;
+            left: 75%;
+            width: calc((60/9) * 80% - 1px);
+            height: calc((40/9) * 80% - 1px);
+        }
+
+        .grid {
+            width: 100%;
+            height: 100%;
+        }
+
+        .game-panel {
+            position: absolute;
+            top: 25%;
+            left: calc((60/9) * 80% - 1px);
+            right: calc((60/9) * 80% - 1px);
+            height: calc((40/9) * 80% - 1px);
+            background-color: white;
+        }
+
+        .grid-label {
+            position: absolute;
+            top: 25%;
+            left: calc((60/9) * 80% - 1px);
+            right: calc((60/9) * 80% - 1px);
+            font-size: 1.3rem;
+            font-weight: bold;
+        }
+
+        .grid-label span {
+            display: inline-block;
+            padding: 5px 2px;
+            border-radius: 4px;
+            color: black;
+            background-color: transparent;
+            box-shadow: none;
+        }
+
+        .grid-label.active {
+            color: yellow;
+        }
+
+        .instructions {
+            position: absolute;
+            top: 25%;
+            left: calc((60/9) * 80% - 1px);
+            right: calc((60/9) * 80% - 1px);
+            height: calc((40/9) * 80% - 1px);
+            background-color: rgba(255, 255, 255, 0.7);
+        }
+
+        .instructions p {
+            font-size: 1rem;
+            line-height: 1.6;
+        }
+
+        .controls {
+            position: absolute;
+            bottom: 30%;
+            left: calc((60/9) * 80% - 2px);
+            right: calc((60/9) * 80% - 2px);
+            height: calc(40/9 * 80%) !important;
+        }
+
+        .controls p {
+            font-size: 1rem;
+            line-height: 1.5;
+        }
+
+        .btn {
+            position: absolute;
+            bottom: 30%;
+            left: calc((60/9) * 80% - 2px);
+            right: calc((60/9) * 80% - 2px);
+            height: 150px;
+            background-color: white;
+            border-radius: 5px;
+            padding: 3px 10px;
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
+        }
+
+        .btn span {
+            position: absolute;
+            top: -9px;
+            left: -6px;
+            font-size: 1.5rem;
+            color: black;
+        }
+
+        .game-status {
+            position: absolute;
+            top: 2%;
+            right: 40%;
+            width: calc(8% / (9/3));
+            height: calc(6% / (9/3));
+            font-size: 1.5rem;
+        }
+
+        .game-status span {
+            display: inline-block;
+        }
+
+        .grid-label.active span {
+            background-color: yellow;
+        }
+
+        @media (max-width: 800px) {
+            body {
+                padding: 1rem;
+            }
+            
+            .game-container {
+                width: calc(60/9 * 75% - 2.5px);
+                height: calc(40/9 * 75% - 2.5px);
+            }
+            
+            .grid-label span {
+                font-size: 1rem;
+            }
+            
+            .game-status span {
+                font-size: 1rem;
+            }
+        }
+
+        @media (max-width: 600px) {
+            body {
+                padding: 0.5rem;
+            }
+            
+            .grid-label span {
+                display: block;
+                font-size: 1rem;
+            }
+            
+            .game-status span {
+                display: inline-block;
+                width: calc(8% / (9/3));
+                height: calc(6% / (9/3));
+            }
+        }
+    </style>
+</head>
+<body>
+    <h1>Conway Game of Life</h1>
+    <p>Click to start the game!</p>
+
+    <div class="game-container" id="gridContainer">
+        <div class="instructions" id="instructions">
+            <p><strong>How to Play:</strong></p>
+            <p>Click on one of these areas to see how it evolves:</p>
+            <span style="display:inline-block; padding: 5px;">Left</span>, <span style="display:inline-block; padding: 5px;">Middle</span>, or <span style="display:inline-block; padding: 5px;">Right</span>
+        </div>
+
+        <div class="controls" id="gridControls">
+            <p><strong>Control Panel:</strong></p>
+            <p>Click on the grid to see how it evolves!</p>
+            <button class="btn"><span>Play Game</span></button>
+        </div>
+
+        <div class="game-status" id="status">
+            <span>LIFE: 100%</span>
+        </div>
+    </div>
+
+    <canvas id="grid"></canvas>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            
+            // Grid initialization
+            const gridContainer = document.getElementById('gridContainer');
+            const gridElement = document.getElementById('grid');
+            const instructions = document.getElementById('instructions');
+            let controlsButton = null;
+            let lastTime = 0;
+            let gameInterval = null;
+            let isProcessing = false;
+
+            // Create the 18x9 grid (40px cells)
+            function createGrid() {
+                const dimensions = [6, 4];
+                const cells = [];
+                
+                for (let row = 0; row < dimensions[0]; row++) {
+                    let rowCells = new Array(dimensions[1]).fill(0);
+                    rowCells.push(rowCells.map(() => Math.random() > 0.85 ? 1 : 0)); // Random population
+                    cells.push(rowCells);
+                }
+
+                const gridElement = document.createElement('canvas');
+                gridElement.width = dimensions[1] * 9;
+                gridElement.height = dimensions[0] * 9;
+                gridElement.style.width = 'calc((60/9) * 80%)';
+                gridElement.style.height = 'calc((40/9) * 80%)';
+                
+                document.body.appendChild(gridElement);
+
+                const imageData = gridElement.getContext('2d');
+                for (let row of cells) {
+                    for (let col of rowCells) {
+                        if (col === 1) {
+                            imageData.fillStyle = 'white';
+                            imageData.fillRect(col * 9, row * 9, 9, 9);
+                        }
+                    }
+                }
+            }
+
+            // Grid rendering function
+            function renderGrid(time) {
+                const gridElement = document.getElementById('grid');
+                gridElement.width = 'calc((60/9) * 80%)';
+                gridElement.height = 'calc((40/9) * 80%)';
+
+                for (let row of cells) {
+                    for (let col of rowCells) {
+                        if (col === 1) {
+                            const imageData = gridElement.getContext('2d');
+                            imageData.fillStyle = 'white';
+                            imageData.fillRect(col * 9, row * 9, 9, 9);
+                        }
+                    }
+                }
+
+                requestAnimationFrame(renderGrid);
+            }
+
+            // Game state management
+            function update(grid) {
+                const population = grid[grid.length - 1];
+                
+                // Basic rule: live cells become more likely to stay alive in the next generation
+                for (let cell of population) {
+                    if (cell === 1 && Math.random() < 0.25) {
+                        cell = 1;
+                    } else if (cell === 0 && Math.random() < 0.7) {
+                        cell = 0;
+                    }
+                }
+
+                grid.push(population);
+            }
+
+            // Game control panel updates
+            function updateControls(time, currentPopulation) {
+                const gridContainer = document.getElementById('gridControls');
+                controlsButton = document.querySelector('.btn');
+                
+                let instructionsHTML = '';
+                if (currentPopulation === 100) {
+                    instructionsHTML += '<p style="color:yellow;"><strong>Game Over!</strong></p>';
+                } else {
+                    instructionsHTML += `<span class="game-status">Life: ${Math.floor(currentPopulation/100)}%</span>`;
+                    controlsButton.innerHTML = `
+                        <span>${currentPopulation} cells</span> 
+                        <button style="display:inline-block; border:none; cursor:pointer;" 
+                                onclick="startGame()">Start Game</button>
+                    `;
+                }
+
+                // Show the correct population for this cell's row
+                const rows = [];
+                grid.forEach(row => {
+                    if (row.length > 0) {
+                        let values = row.map(() => Math.random() > 0.85 ? 1 : 0);
+                        rows.push(values);
+
+                        const percentage = currentPopulation / population;
+                        const percentText = `${Math.floor(percentage/10)}%`;
+                        
+                        if (currentPopulation === 1) {
+                            percentText = 'UNLIKELY TO BE A LIVE CELL';
+                        } else if (percent > 75 && percentage < 90) {
+                            percentText += '?';
+                        }
+
+            <!--
+                    If this is the first time seeing a live cell, you'll see yellow.
+                    Otherwise, it's either live or likely to be live.
+                -->
+            </span>
+
+                const style = currentPopulation === 1 ? 'background-color: yellow;' : '';
+                instructionsHTML += `<span>${percentage}%<small>${style}</small>`;
+
+                controlsContainer.innerHTML = `
+                    <p><strong>Control Panel:</strong></p>
+                    <p>This grid evolves by using simple rules based on population!</p>
+                    ${instructionsHTML}
+                    <button class="btn" style="display:inline-block; border:none; cursor:pointer;" 
+                            onclick="startGame()">Start Game</button>
+                `;
+            }
+
+            // Start game when button is clicked or time passes
+            function startGame() {
+                if (gameInterval) return;
+                
+                // Reset population to 100 for the first few generations
+                const population = currentPopulation === 100 
+                    ? 100 : Math.min(8, Math.floor(currentPopulation / 3));
+                    
+                update(grid, population);
+                renderGrid(time + 5);
+                
+                gameInterval = setInterval(update, 200); // Update every 200ms
+            }
+
+            // Start the game automatically if already running or after 1 second
+            function startGameIfRunning() {
+                if (!isProcessing || currentPopulation === 1) return;
+
+                const population = currentPopulation === 100 
+                    ? 8 : Math.min(8, Math.floor(currentPopulation / 3));
+                
+                update(grid, population);
+                renderGrid(time + 5);
+            }
+
+            // Start the game automatically if already running
+            function startGame() {
+                if (!isProcessing) return;
+
+                const population = currentPopulation === 100 
+                    ? 8 : Math.min(8, Math.floor(currentPopulation / 3));
+                
+                update(grid, population);
+                renderGrid(time + 5);
+            }
+
+            // Keyboard controls (clickable grid area)
+            document.addEventListener('keydown', function(e) {
+                if (!isProcessing || gameInterval) return;
+
+                const key = e.key.toLowerCase();
+                
+                if (key === 'arrowright' || key === 'arrowleft') {
+                    lastTime = time + 50;
+                    updateControls(lastTime, currentPopulation);
+                } else {
+                    // Start or stop game based on population
+                    isProcessing = true;
+                    
+                    let newPopulation = currentPopulation;
+                    if (key === 'space') {
+                        newPopulation *= Math.floor(currentPopulation / 3);
+                    }
+
+                    update(grid, newPopulation);
+                }
+            });
+
+            // Add click event to grid areas
+            const gridLabels = document.querySelectorAll('.grid-label');
+            
+            for (let label of gridLabels) {
+                const cellWidth = parseFloat(label.parentElement.offsetWidth);
+                
+                if (!cellWidth || cellWidth < 20) return; // Avoid too small cells
+
+                // Start game when area becomes fully visible (first few seconds)
+                let startPopulation = currentPopulation === 1 
+                    ? 8 : Math.min(8, Math.floor(currentPopulation / 3));
+                
+                if (startPopulation !== currentPopulation && startPopulation === 8) {
+                    isProcessing = true;
+                    
+                    update(grid, startPopulation);
+                    renderGrid(time + 5);
+                }
+
+                // Click event on grid area
+                label.addEventListener('click', function(e) {
+                    const cellWidth = parseFloat(this.parentElement.offsetWidth);
+                    
+                    if (!cellWidth || cellWidth < 20) return;
+
+                    let startPopulation = currentPopulation === 1 
+                        ? 8 : Math.min(8, Math.floor(currentPopulation / 3));
+                    
+                    isProcessing = true;
+                    
+                    update(grid, startPopulation);
+                    renderGrid(time + 5);
+                });
+            }
+
+            // Add click event to the game button
+            controlsButton.addEventListener('click', function(e) {
+                if (gameInterval) return;
+                
+                if (!isProcessing && currentPopulation === 1) return;
+
+                update(grid, currentPopulation);
+                renderGrid(time + 5);
+                
+                isProcessing = true;
+                
+                gameInterval = setInterval(update, 200);
+            });
+
+        });
+    </script>
+</body>
+</html>

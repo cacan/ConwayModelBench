@@ -1157,48 +1157,40 @@
       "migratedFrom": "ConwayGameofLife_Taalas_ASIC_v2.html"
     },
     {
-      "model": "oblaci-polja-nemotron-3-nano",
-      "displayName": "Oblaci Polja Nemotron 3 Nano",
-      "slug": "oblaci-polja-nemotron-3-nano",
-      "file": "oblaci-polja-nemotron-3-nano.html",
-      "canonicalFile": "oblaci-polja-nemotron-3-nano.html",
-      "timestamp": "2026-08-25T10:57:52.915Z",
-      "durationMs": null,
-      "contentLength": 1220,
-      "htmlLength": 1220,
+      "model": "lfm2.5-24b-a2b",
+      "displayName": "LFM 2.5 24B A2B",
+      "slug": "lfm2-5-24b-a2b",
+      "file": "lfm2-5-24b-a2b__2026-10-14-09-16-22__f5b889.html",
+      "canonicalFile": "lfm2-5-24b-a2b.html",
+      "timestamp": "2026-10-14T09:16:22.403Z",
+      "durationMs": 90647,
+      "contentLength": 4950,
+      "htmlLength": 4938,
       "tokens": {
-        "prompt": null,
-        "completion": null,
-        "total": null
+        "prompt": 261,
+        "completion": 7575,
+        "total": 7836
       },
       "tags": [
-        "nvidia",
-        "small",
-        "svg"
-      ],
-      "migratedFrom": "oblaci-polja-nemotron-3-nano.html"
+        "lfm"
+      ]
     },
     {
-      "model": "oblaci-polja-nemotron-3-nano-3d",
-      "displayName": "Oblaci Polja Nemotron 3 Nano 3D",
-      "slug": "oblaci-polja-nemotron-3-nano-3d",
-      "file": "oblaci-polja-nemotron-3-nano-3d.html",
-      "canonicalFile": "oblaci-polja-nemotron-3-nano-3d.html",
-      "timestamp": "2026-08-25T10:57:52.915Z",
-      "durationMs": null,
-      "contentLength": 11860,
-      "htmlLength": 11860,
+      "model": "lfm2.5-8b-a1b-qwen3.8-turbo-brilliance-power-x12-neo-max@q6_k",
+      "displayName": "Lfm2.5 8B A1B Qwen3.8 Turbo Brilliance Power X12 Neo Max@Q6_K",
+      "slug": "lfm2-5-8b-a1b-qwen3-8-turbo-brilliance-power-x12-neo-max-q6-k",
+      "file": "lfm2-5-8b-a1b-qwen3-8-turbo-brilliance-power-x12-neo-max-q6-k__2026-10-14-09-17-21__07f6ad.html",
+      "canonicalFile": "lfm2-5-8b-a1b-qwen3-8-turbo-brilliance-power-x12-neo-max-q6-k.html",
+      "timestamp": "2026-10-14T09:17:21.189Z",
+      "durationMs": 52342,
+      "contentLength": 7467,
+      "htmlLength": 2596,
       "tokens": {
-        "prompt": null,
-        "completion": null,
-        "total": null
+        "prompt": 337,
+        "completion": 2003,
+        "total": 2340
       },
-      "tags": [
-        "nvidia",
-        "small",
-        "svg"
-      ],
-      "migratedFrom": "oblaci-polja-nemotron-3-nano_3d.html"
+      "tags": []
     }
   ]
 }

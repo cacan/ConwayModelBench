@@ -29,14 +29,14 @@ The actual prompt was just one sentence. Models had to figure out everything els
 
 | Architecture | Count | Notes |
 |---|---|---|
-| **Canvas 2D** | 31 | The sweet spot — fast, scales to big grids |
-| **Three.js 3D** | 13 | The show-offs — Gemini went full audio + rule sets + 40³ voxels |
+| **Canvas 2D** | 33 | The sweet spot — fast, scales to big grids |
+| **Three.js 3D** | 12 | The show-offs — Gemini went full audio + rule sets + 40³ voxels |
 | **DOM divs** | 15 | The old-school approach — slow at large grids but works |
-| **SVG (non-Conway)** | 2 | The nemotron-3-nano hallucinated a Croatian landscape instead of Conway |
+| **SVG** | 1 | `2GB_qwen3-glm-distill` draws its grid with SVG instead of canvas |
 
 And the features:
-- **30 / 59** implemented toroidal wrap (no edge special-casing)
-- **9 / 59** added keyboard shortcuts
+- **32 / 59** implemented toroidal wrap (no edge special-casing)
+- **8 / 59** added keyboard shortcuts
 - **2 / 59** did audio synthesis (both Gemini 3D variants)
 
 ### Best 2D implementations
@@ -53,7 +53,7 @@ And the features:
 
 ### Notable failures
 
-- **`oblaci-polja-nemotron-3-nano`** — Pure SVG of clouds, sun, mountains, river. In Croatian. Not a Conway implementation at all.
+- **Removed 2026-10-14:** both `oblaci-polja-nemotron-3-nano` entries were dropped from the dataset. One rendered a Croatian landscape and the other a non-Conway 3D scene, so neither was a comparable Conway result.
 - **`ConwayGameofLife_Qwen3.5-4b-v1`** — Rule logic inverted (`neighbors > 0 → alive`), undefined `top` variable, 2D grid drawn as 1D.
 - **`ConwayGameofLife_Taalas_ASIC_v1`** — 50×50 grid in a 10×10 CSS Grid, in-place mutation during iteration, DOM rebuild every step.
 - **`ConwayGameofLife-Qwen3-distill-claude-opus-4.6-v1`** — Click Play = nothing happens. `requestAnimationFrame` recursion never kicks off.
@@ -202,7 +202,7 @@ If you want to re-run the bench with stricter requirements (e.g. "must use Canva
 ## Methodology notes
 
 - **Endpoint**: `http://192.168.31.13:1234/v1` (configurable via `LMSTUDIO_ENDPOINT`)
-- **Default params**: `temperature=0.2, max_tokens=8000, stream=false`
+- **Default params**: `temperature=0.2, max_tokens=65536 (64K, effectively unbounded for this task), stream=false`
 - **Feature detection**: regex-based (see `scripts/report.js` → `detectFeatures()`). It's intentionally simple and easy to audit.
 - **Screenshots**: Playwright headless Chromium, 1280×800 viewport. The "Randomize" button is auto-detected (by id, label, or button text matching `/random/i`).
 
