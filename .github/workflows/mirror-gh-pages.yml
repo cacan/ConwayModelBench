@@ -1,0 +1,48 @@
+name: Mirror main to gh-pages
+
+# Keeps the published GitHub Pages site in step with main. The site is served
+# from the root of the gh-pages branch (Settings -> Pages -> Deploy from a
+# branch), so every push to main rewrites that branch to match.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# Required to push the mirror branch with the default GITHUB_TOKEN.
+permissions:
+  contents: write
+
+# Never let two mirrors race; the newest push wins.
+concurrency:
+  group: mirror-gh-pages
+  cancel-in-progress: true
+
+jobs:
+  mirror:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Mirror the pushed tree to gh-pages
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          # gh-pages is an orphan mirror branch: keep its own history, but make
+          # its tree byte-identical to the pushed main tree.
+          git fetch origin gh-pages
+          git checkout -B gh-pages origin/gh-pages
+          git read-tree -u --reset "$GITHUB_SHA"
+
+          if git diff --cached --quiet; then
+            echo "gh-pages already matches main; nothing to mirror."
+            exit 0
+          fi
+
+          git commit -q -m "docs: mirror main for GitHub Pages"
+          git push origin gh-pages
