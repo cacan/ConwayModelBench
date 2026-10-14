@@ -189,6 +189,14 @@ npm run all    # bench + screenshots + report
    node scripts/report.js
    ```
 
+## Publishing
+
+GitHub Pages serves the report from the root of the `gh-pages` branch. That branch is **generated** — do not edit it by hand.
+
+[`.github/workflows/mirror-gh-pages.yml`](.github/workflows/mirror-gh-pages.yml) rewrites `gh-pages` to match `main` on every push to `main`, so the live report at [cacan.github.io/ConwayModelBench/docs/index.html](https://cacan.github.io/ConwayModelBench/docs/index.html) always tracks the latest commit. It is safe to re-run: when `gh-pages` already matches, the job exits without committing.
+
+Because `docs/index.html` links to `screenshots/` and `outputs/` relative to itself, `node scripts/report.js` copies exactly those referenced files into `docs/screenshots/` and `docs/outputs/`. Those copies are committed so the report works both from `file://` and from the Pages root.
+
 ## The shared prompt
 
 See [`prompt.md`](prompt.md). It's deliberately minimal:
